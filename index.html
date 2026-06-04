@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>海の見える部屋のふたり</title>
+    <title>海の見える部屋のふたり（縦横無尽版）</title>
     <style>
         body {
             display: flex;
@@ -31,15 +31,14 @@
 
         /* キャラクター共通設定 */
         .character {
-            width: 100px; /* ✨ 前回より少し大きめの100pxにしてみました！ */
+            width: 100px; 
             height: 100px;
             background-size: contain;
             background-repeat: no-repeat;
             background-position: bottom center;
             position: absolute;
-            bottom: 80px; 
-            /* 向きを変えるアニメーションを滑らかに(scaleXを変化させます) */
-            transition: left 1.5s ease-in-out, width 0.5s ease, height 0.5s ease, transform 0.2s;
+            /* 縦横無尽に動くために、位置(left/bottom)と奥行サイズ(transform)のスピードを速く設定！ */
+            transition: left 1.2s ease-in-out, bottom 1.2s ease-in-out, transform 0.3s ease;
             cursor: pointer;
             user-select: none;
             z-index: 10;
@@ -51,15 +50,15 @@
             background: white;
             border-radius: 10px;
             padding: 5px 10px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: bold;
             color: #333;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             display: none;
-            z-index: 20;
+            z-index: 30;
             white-space: nowrap;
+            transition: left 1.2s ease-in-out, bottom 1.2s ease-in-out;
         }
-        /* 吹き出しのしっぽ */
         .speech-bubble::after {
             content: '';
             position: absolute;
@@ -75,9 +74,9 @@
 
         /* ジャンプアニメーション */
         @keyframes jump {
-            0% { transform: translateY(0) scaleX(var(--direction, 1)); }
-            50% { transform: translateY(-30px) scaleX(var(--direction, 1)); }
-            100% { transform: translateY(0) scaleX(var(--direction, 1)); }
+            0% { transform: translate(0, 0) scale(var(--base-scale-x), var(--base-scale-y)); }
+            50% { transform: translate(0, -30px) scale(var(--base-scale-x), var(--base-scale-y)); }
+            100% { transform: translate(0, 0) scale(var(--base-scale-x), var(--base-scale-y)); }
         }
         .jump-animation {
             animation: jump 0.4s ease;
@@ -105,7 +104,7 @@
             display: flex;
             justify-content: center;
             gap: 15px;
-            z-index: 30;
+            z-index: 40;
         }
         button {
             padding: 10px 20px;
@@ -139,7 +138,6 @@
 <script>
     const snack = document.getElementById('snack');
 
-    // 二人のデータ管理（配列にする（0番目が通常服、1番目が島服））
     const charas = [
         {
             id: 1,
@@ -147,10 +145,10 @@
             bubble: document.getElementById('bubble1'),
             imgNormal: 'chara_normal.png',
             imgEat: 'chara_eat.png',
-            x: 50,
-            direction: 1, // 1が左向き、-1が右向き
-            isReacting: false,
-            name: "通常服の子"
+            x: 60,
+            y: 80, // ✨ 縦（高さ）の初期位置
+            direction: 1, 
+            isReacting: false
         },
         {
             id: 2,
@@ -158,105 +156,130 @@
             bubble: document.getElementById('bubble2'),
             imgNormal: 'chara_island.png',
             imgEat: 'chara_island_eat.png',
-            x: 200,
+            x: 180,
+            y: 110, // ✨ 縦（高さ）の初期位置
             direction: 1,
-            isReacting: false,
-            name: "島服の子"
+            isReacting: false
         }
     ];
 
-    // おしゃべりのセリフ集（スターシステムならではの可愛い掛け合い）
     const chatPhrases = [
         ["あ、こんにちは！", "ふふ、こんにちは。"],
         ["海がきれいで落ち着くねー", "本当、ずっと見ていられる。"],
         ["今日のおやつは何かな？", "ドーナツだといいなぁ。"],
+        ["ちょっとそこのいてー！", "あはは、ごめんごめん！"],
         ["ねえねえ！", "なぁに？"]
     ];
 
-    // 初期位置と画像のセット
+    // 初期化
     charas.forEach(c => {
         c.element.style.backgroundImage = `url('${c.imgNormal}')`;
-        c.element.style.left = c.x + 'px';
+        updatePosition(c);
     });
 
-    // 1. それぞれが個別にウロウロ歩く（反転ロジック付き）
+    // 🏃‍♂️ キャラの位置と大きさを一括で更新する魔法の関数
+    function updatePosition(c) {
+        c.element.style.left = c.x + 'px';
+        c.element.style.bottom = c.y + 'px';
+
+        // 💡 奥行き計算：お部屋の奥（yの数値が大きい）にいくほど、キャラをちょっと小さくする
+        // 手前(y=40)なら100%、奥(y=160)なら70%のサイズ感
+        const scaleFactor = 1 - ((c.y - 40) / 120) * 0.3;
+        const scaleX = c.direction * scaleFactor;
+        const scaleY = scaleFactor;
+
+        // 次のアニメーション（ジャンプなど）にサイズを引き継ぐための変数
+        c.element.style.setProperty('--base-scale-x', scaleX);
+        c.element.style.setProperty('--base-scale-y', scaleY);
+
+        c.element.style.transform = `scale(${scaleX}, ${scaleY})`;
+        
+        // 重なり順の調整（手前にいるキャラ(yが小さい)を上に表示する）
+        c.element.style.zIndex = 20 - Math.floor(c.y / 10);
+
+        // 吹き出しの位置も追従
+        c.bubble.style.left = (c.x + 10) + 'px';
+        c.bubble.style.bottom = (c.y + 105 * scaleFactor) + 'px';
+    }
+
+    // 1. 縦横無尽にウロウロ歩く
     function walk(charaIndex) {
         const c = charas[charaIndex];
         if (c.isReacting) return;
 
-        // 次の移動先をランダム決定（画面幅350px - キャラ幅100px = 250px の間）
+        // 横の移動範囲 (20px 〜 230px)
         const newX = Math.floor(Math.random() * 210) + 20;
+        // 縦（奥行き）の移動範囲 (40px 〜 150px の間で自由に動く！)
+        const newY = Math.floor(Math.random() * 110) + 40;
         
-        // 👈 【左右反転の魔法】 ➔ 行き先が今の位置より左なら「元の向き(1)」、右なら「反転(-1)」
+        // 左右反転の判定
         if (newX < c.x) {
-            c.direction = 1;  // 左を向く（イラスト本来の向き）
+            c.direction = 1;  // 左を向く
         } else {
-            c.direction = -1; // 右を向く（左右反転）
+            c.direction = -1; // 右を向く
         }
         
         c.x = newX;
-        c.element.style.setProperty('--direction', c.direction);
-        c.element.style.transform = `scaleX(${c.direction})`;
-        c.element.style.left = c.x + 'px';
+        c.y = newY;
 
-        // 吹き出しをキャラの頭上に追従させる
-        updateBubblePosition(c);
-
-        // 2歩に1回くらい、すれ違い（距離が近くなった時）におしゃべり判定
+        updatePosition(c);
         checkChat();
 
-        setTimeout(() => walk(charaIndex), Math.floor(Math.random() * 2000) + 2000);
+        // 次に動くまでの時間を「1秒〜2.5秒」に短縮して大忙しに！
+        const nextTime = Math.floor(Math.random() * 1500) + 1000;
+        setTimeout(() => walk(charaIndex), nextTime);
     }
     
-    // 二人とも歩き出させる
+    // 二人を出発させる
     setTimeout(() => walk(0), 0);
-    setTimeout(() => walk(1), 800); // ちょっと時間をずらして出発
-
-    // 吹き出しの位置をキャラに合わせる関数
-    function updateBubblePosition(c) {
-        c.bubble.style.left = (c.x + 10) + 'px';
-        c.bubble.style.bottom = '185px'; // キャラ（80px+地面80px）の上
-    }
+    setTimeout(() => walk(1), 500);
 
     // 2. おしゃべりするシステム
     function checkChat() {
-        const distance = Math.abs(charas[0].x - charas[1].x);
-        // 二人の距離が近くて、どちらもリアクション中でなければおしゃべり発生
-        if (distance < 80 && !charas[0].isReacting && !charas[1].isReacting) {
+        // 縦も横も位置が近くなったらおしゃべり
+        const distanceX = Math.abs(charas[0].x - charas[1].x);
+        const distanceY = Math.abs(charas[0].y - charas[1].y);
+
+        if (distanceX < 70 && distanceY < 40 && !charas[0].isReacting && !charas[1].isReacting) {
+            // おしゃべり確率を少し調整して、歩くのを邪魔しすぎないように
+            if (Math.random() > 0.4) return; 
+
             charas[0].isReacting = true;
             charas[1].isReacting = true;
 
-            // ランダムに会話ペアを選ぶ
             const randomPair = chatPhrases[Math.floor(Math.random() * chatPhrases.length)];
             
-            // 向き合っておしゃべりさせる
+            // 向き合わせる
+            const factor0 = parseFloat(charas[0].element.style.getPropertyValue('--base-scale-y')) || 1;
+            const factor1 = parseFloat(charas[1].element.style.getPropertyValue('--base-scale-y')) || 1;
+
             if (charas[0].x < charas[1].x) {
-                charas[0].element.style.transform = "scaleX(-1)"; // 右向く
-                charas[1].element.style.transform = "scaleX(1)";  // 左向く
+                charas[0].element.style.transform = `scale(${-1 * factor0}, ${factor0})`;
+                charas[1].element.style.transform = `scale(${1 * factor1}, ${factor1})`;
             } else {
-                charas[0].element.style.transform = "scaleX(1)";  // 左向く
-                charas[1].element.style.transform = "scaleX(-1)"; // 右向く
+                charas[0].element.style.transform = `scale(${1 * factor0}, ${factor0})`;
+                charas[1].element.style.transform = `scale(${-1 * factor1}, ${factor1})`;
             }
 
             // 1人目発言
             charas[0].bubble.innerText = randomPair[0];
             charas[0].bubble.style.display = 'block';
-            updateBubblePosition(charas[0]);
 
-            // 1.2秒後に2人目発言
+            // 0.8秒後に2人目発言
             setTimeout(() => {
                 charas[1].bubble.innerText = randomPair[1];
                 charas[1].bubble.style.display = 'block';
-                updateBubblePosition(charas[1]);
-            }, 1200);
+            }, 800);
 
-            // 3秒後に会話終了、解散
+            // 2.5秒後に会話終了、解散
             setTimeout(() => {
                 charas[0].bubble.style.display = 'none';
                 charas[1].bubble.style.display = 'none';
                 charas[0].isReacting = false;
                 charas[1].isReacting = false;
-            }, 3500);
+                updatePosition(charas[0]);
+                updatePosition(charas[1]);
+            }, 2500);
         }
     }
 
@@ -273,12 +296,12 @@
             c.element.classList.remove('jump-animation');
             c.element.style.backgroundImage = `url('${c.imgNormal}')`;
             c.isReacting = false;
+            updatePosition(c);
         }, 400);
     }
 
     // 4. ふたりにおやつをあげる
     function giveSnackAll() {
-        // どちらかが反応中なら無視
         if (charas[0].isReacting || charas[1].isReacting) return;
         
         charas[0].isReacting = true;
@@ -286,28 +309,31 @@
 
         snack.style.display = 'block';
 
-        // ふたりともドーナツの場所（右側）へトコトコ集まる
-        // ぴったり重ならないように少しずらして並ばせます
-        charas[0].element.style.transform = "scaleX(-1)"; // 右を向く
-        charas[0].element.style.left = '160px';
+        // おやつの近く（手前側）へダッシュ！
+        charas[0].direction = -1;
+        charas[0].x = 160;
+        charas[0].y = 80;
+        updatePosition(charas[0]);
         
-        charas[1].element.style.transform = "scaleX(-1)"; // 右を向く
-        charas[1].element.style.left = '220px';
+        charas[1].direction = -1;
+        charas[1].x = 220;
+        charas[1].y = 90;
+        updatePosition(charas[1]);
 
         setTimeout(() => {
-            // ドーナツに到着、食べた顔で喜ぶ！
             charas[0].element.style.backgroundImage = `url('${charas[0].imgEat}')`;
             charas[1].element.style.backgroundImage = `url('${charas[1].imgEat}')`;
-            snack.style.display = 'none'; // ドーナツ消える
+            snack.style.display = 'none';
 
             setTimeout(() => {
-                // 元に戻ってウロウロ再開
                 charas[0].element.style.backgroundImage = `url('${charas[0].imgNormal}')`;
                 charas[1].element.style.backgroundImage = `url('${charas[1].imgNormal}')`;
                 charas[0].isReacting = false;
                 charas[1].isReacting = false;
-            }, 1500);
-        }, 1600);
+                updatePosition(charas[0]);
+                updatePosition(charas[1]);
+            }, 1200);
+        }, 1300);
     }
 </script>
 
