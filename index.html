@@ -3,162 +3,270 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ミニたまごっち風ゲーム</title>
+    <title>島リゾート・マイペット</title>
     <style>
         body {
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background-color: #f0f0f0;
+            background-color: #e0f7fa; /* 海っぽい薄い青 */
             font-family: 'Helvetica Neue', Arial, sans-serif;
             margin: 0;
         }
-        /* ガラケー・たまごっち風の本体 */
-        .game-container {
-            width: 300px;
-            height: 400px;
-            background-color: #ff9a9e;
-            border-radius: 40px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-            padding: 20px;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: space-between;
-            border: 8px solid #ff6b81;
-        }
-        /* 液晶画面 */
-        .screen {
-            width: 100%;
-            height: 220px;
-            background-color: #e0ece4;
-            border: 5px solid #555;
-            border-radius: 10px;
+
+        /* ゲームの舞台（お部屋・お庭） */
+        .stage-container {
+            width: 350px;
+            height: 550px;
+            background-image: url('background.png'); 
+            background-size: cover;
+            background-position: center;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
             position: relative;
             overflow: hidden;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+            border: 6px solid #fff; /* お部屋の窓枠風 */
         }
-        /* キャラクター */
+
+        /* ステータスバー（お腹のすき具合を表示） */
+        .status-bar {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(255, 255, 255, 0.85);
+            padding: 8px 12px;
+            border-radius: 15px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #333;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 30;
+        }
+
+        /* キャラクター設定 */
         .character {
-            font-size: 50px;
+            width: 80px;
+            height: 80px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: bottom center;
             position: absolute;
-            bottom: 20px;
-            left: 110px;
-            transition: left 1s ease-in-out, transform 0.2s;
+            bottom: 80px; /* 地面からの高さ */
+            left: 135px;
+            transition: left 1s ease-in-out, width 0.5s ease, height 0.5s ease, bottom 0.5s ease, background-image 0.1s;
+            cursor: pointer;
             user-select: none;
+            z-index: 10;
         }
-        /* おやつ（出現時用） */
+
+        /* タップされた時のピョンと跳ねるアニメーション */
+        @keyframes jump {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-30px); }
+            100% { transform: translateY(0); }
+        }
+        .jump-animation {
+            animation: jump 0.4s ease;
+        }
+
+        /* おやつの画像 */
         .snack {
-            font-size: 30px;
+            width: 40px;
+            height: 40px;
+            background-image: url('snack.png');
+            background-size: contain;
+            background-repeat: no-repeat;
             position: absolute;
-            bottom: 25px;
+            bottom: 90px;
             right: 40px;
             display: none;
-            animation: bounce 0.5s infinite alternate;
+            z-index: 5;
         }
-        @keyframes bounce {
-            from { transform: translateY(0); }
-            to { transform: translateY(-10px); }
-        }
-        /* ボタンエリア */
+
+        /* 下部の操作ボタン */
         .controls {
-            display: flex;
-            gap: 15px;
+            position: absolute;
+            bottom: 15px;
             width: 100%;
+            display: flex;
             justify-content: center;
+            gap: 15px;
+            z-index: 20;
         }
         button {
-            padding: 10px 15px;
-            font-size: 14px;
+            padding: 10px 18px;
+            font-size: 13px;
             font-weight: bold;
             border: none;
-            border-radius: 20px;
-            background-color: #fff;
-            color: #333;
-            box-shadow: 0 4px 0 #ccc;
+            border-radius: 25px;
+            background-color: rgba(255, 255, 255, 0.9);
+            color: #00796b; /* 海っぽい濃い緑 */
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
             cursor: pointer;
-            transition: transform 0.1s;
+            transition: all 0.2s;
+        }
+        button:hover {
+            background-color: #fff;
+            transform: scale(1.05);
         }
         button:active {
-            transform: translateY(4px);
-            box-shadow: none;
+            transform: scale(0.95);
         }
     </style>
 </head>
 <body>
 
-<div class="game-container">
-    <!-- 画面 -->
-    <div class="screen">
-        <div id="character" class="character">(o^^o)</div>
-        <div id="snack" class="snack">🍩</div>
+<div class="stage-container">
+    <!-- お腹のすき具合メーター -->
+    <div class="status-bar">
+        ごはん：<span id="hunger-text">まんぷく</span>
     </div>
 
-    <!-- 操作ボタン -->
+    <!-- キャラクター（クリック・タップでリアクション） -->
+    <div id="character" class="character" onclick="tapCharacter()"></div>
+
+    <!-- 出現するおやつ -->
+    <div id="snack" class="snack"></div>
+
+    <!-- ボタン -->
     <div class="controls">
-        <button onclick="giveSnack()">おやつ</button>
-        <button onclick="changeOutfit()">きがえ</button>
+        <button onclick="giveSnack()">おやつをあげる</button>
+        <button onclick="changeOutfit()">おきがえ（島）</button>
     </div>
 </div>
 
 <script>
     const character = document.getElementById('character');
     const snack = document.getElementById('snack');
+    const hungerText = document.getElementById('hunger-text');
 
-    // キャラクターの状態
-    let currentOutfit = 0;
-    const outfits = ["(o^^o)", "🤠(o^^o)", "👑(o^^o)🎀", "🕶️(o_o)"]; // 服装（見た目）のバリエーション
+    // ゲームの状態管理
+    let hungerScore = 100;
+    let isReacting = false;
+    let isIslandOutfit = false; // 現在島バージョンかどうか
 
-    // 1. 自動でウロウロ動く処理
+    // 画像のファイル名設定（用意した名前に変更してください）
+    const imgNormal = 'chara_normal.png';
+    const imgEat = 'chara_eat.png';
+    const imgIsland = 'chara_island.png';
+    const imgIslandEat = 'chara_island_eat.png';
+
+    // 初期化：最初の見た目を設定
+    function initCharacter() {
+        character.style.backgroundImage = `url('${imgNormal}')`;
+    }
+    initCharacter();
+
+    // 1. 自動でウロウロ歩く
     function walkAround() {
-        // 画面の幅（300px）からキャラの幅を引いた範囲でランダムに移動
-        const randomX = Math.floor(Math.random() * 180) + 10;
+        if (isReacting || hungerScore <= 0) return;
+
+        const randomX = Math.floor(Math.random() * 230) + 20;
         character.style.left = randomX + 'px';
         
-        // ランダムな時間（1.5秒〜3.5秒）ごとに次の移動をする
-        const randomTime = Math.floor(Math.random() * 2000) + 1500;
+        const randomTime = Math.floor(Math.random() * 2500) + 1500;
         setTimeout(walkAround, randomTime);
     }
-    // 最初にウロウロを開始
     walkAround();
 
-    // 2. おやつをあげる処理
-    function giveSnack() {
-        // おやつを表示
-        snack.style.display = 'block';
-        
-        // キャラがおやつの方向（右側）を向いて近づく
-        character.style.left = '160px';
-        
-        setTimeout(() => {
-            // もぐもぐする（顔が変わる）
-            const oldFace = outfits[currentOutfit];
-            character.innerText = "抱( 👑 🍇 )"; // もぐもぐ中の仮の姿
-            character.innerText = oldFace.replace("(o^^o)", "(^Q^)")
-                                         .replace("(o_o)", "(^Q^)"); 
-            
-            // おやつが消える
-            snack.style.display = 'none';
-            
-            // 1秒後に元の顔に戻る
-            setTimeout(() => {
-                character.innerText = outfits[currentOutfit];
-            }, 1000);
-        }, 1200);
+    // 2. お腹がだんだん空くタイマー
+    setInterval(() => {
+        if (hungerScore > 0) {
+            hungerScore -= 5;
+            updateStatus();
+        }
+    }, 10000); // 10秒ごとに減る
+
+    function updateStatus() {
+        // お腹の空き具合でサイズと画像を切り替え
+        if (hungerScore <= 0) {
+            hungerText.innerText = "限界…動けない";
+            hungerText.style.color = "black";
+            // 完全に空腹なら、通常顔で小さく
+            character.style.backgroundImage = isIslandOutfit ? `url('${imgIsland}')` : `url('${imgNormal}')`;
+            character.style.width = '30px';
+            character.style.height = '30px';
+            character.style.bottom = '80px';
+        } else if (hungerScore <= 30) {
+            hungerText.innerText = "ペコペコ💧";
+            hungerText.style.color = "red";
+            if (!isReacting) {
+                // ペコペコなら、通常顔で少し小さく
+                character.style.backgroundImage = isIslandOutfit ? `url('${imgIsland}')` : `url('${imgNormal}')`;
+                character.style.width = '50px';
+                character.style.height = '50px';
+            }
+        } else {
+            hungerText.innerText = "まんぷく！";
+            hungerText.style.color = "green";
+            if (!isReacting) {
+                // 満腹なら、通常顔で大きく
+                character.style.backgroundImage = isIslandOutfit ? `url('${imgIsland}')` : `url('${imgNormal}')`;
+                character.style.width = '80px';
+                character.style.height = '80px';
+            }
+        }
     }
 
-    // 3. 服装が変わる処理
+    // 3. タップしたときのリアクション
+    function tapCharacter() {
+        if (isReacting || hungerScore <= 0) return;
+        isReacting = true;
+
+        // タップされたら、衣装に合わせた「食べた顔（満足顔）」にしてジャンプ
+        character.style.backgroundImage = isIslandOutfit ? `url('${imgIslandEat}')` : `url('${imgEat}')`;
+        character.classList.add('jump-animation');
+
+        setTimeout(() => {
+            character.classList.remove('jump-animation');
+            isReacting = false;
+            updateStatus(); 
+        }, 400);
+    }
+
+    // 4. おやつをあげる
+    function giveSnack() {
+        if (isReacting || hungerScore <= 0) return;
+        isReacting = true;
+
+        snack.style.display = 'block';
+        character.style.left = '200px'; // おやつの場所へ移動
+        
+        setTimeout(() => {
+            // 到着したら、衣装に合わせた「食べた顔」で喜ぶ
+            character.style.backgroundImage = isIslandOutfit ? `url('${imgIslandEat}')` : `url('${imgEat}')`;
+            snack.style.display = 'none';
+            
+            hungerScore = 100; // 満腹回復
+            updateStatus();
+
+            setTimeout(() => {
+                isReacting = false;
+                updateStatus();
+                walkAround(); 
+            }, 1000);
+        }, 1100);
+    }
+
+    // 5. おきがえ（島バージョン⇔通常）
     function changeOutfit() {
-        currentOutfit = (currentOutfit + 1) % outfits.length;
-        character.innerText = outfits[currentOutfit];
+        if (isReacting || hungerScore <= 0) return;
+        
+        isIslandOutfit = !isIslandOutfit; // フラグを切り替え
+        
+        // ボタンの文字も切り替え
+        const btn = document.querySelectorAll('button')[1];
+        btn.innerText = isIslandOutfit ? "おきがえ（通常）" : "おきがえ（島）";
+        
+        // 即座に見た目を反映
+        character.style.backgroundImage = isIslandOutfit ? `url('${imgIsland}')` : `url('${imgNormal}')`;
         
         // ピョコッと跳ねるアニメーション
-        character.style.transform = 'scale(1.2) translateY(-10px)';
+        character.style.transform = 'scale(1.1) translateY(-10px)';
         setTimeout(() => {
             character.style.transform = 'scale(1) translateY(0)';
-        }, 2000);
+        }, 150);
     }
 </script>
 
