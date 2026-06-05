@@ -88,8 +88,8 @@
             background-size: contain;
             background-repeat: no-repeat;
             position: absolute;
-            bottom: 155px; /* ✨ 机の上に載る高さに調整！ */
-            right: 110px;  /* ✨ テーブルの真ん中あたりに配置！ */
+            bottom: 155px; 
+            right: 110px;  
             display: none;
             z-index: 15;
         }
@@ -213,7 +213,7 @@
         if (c.isReacting) return;
 
         const newX = Math.floor(Math.random() * 215) + 15;
-        const newY = Math.floor(Math.random() * 110) + 40; // 歩く範囲
+        const newY = Math.floor(Math.random() * 110) + 40; 
         
         c.direction = (newX < c.x) ? 1 : -1;
         c.x = newX;
@@ -236,7 +236,6 @@
 
     // おしゃべり発生チェック
     function checkChat() {
-        // ランダムに2人選んで距離が近ければおしゃべり
         const i1 = Math.floor(Math.random() * 4);
         const i2 = (i1 + 1) % 4;
         const c1 = charas[i1];
@@ -250,7 +249,6 @@
 
                 const pair = chatPhrases[Math.floor(Math.random() * chatPhrases.length)];
                 
-                // 向き合わせる
                 c1.direction = (c1.x < c2.x) ? -1 : 1;
                 c2.direction = (c2.x < c1.x) ? -1 : 1;
                 updatePosition(c1);
@@ -291,26 +289,28 @@
         }, 400);
     }
 
-    // メニューを開閉
+    // メニューを開閉する関数（表示をflexにして綺麗に並べます）
     function toggleMenu() {
-        menuPopup.style.display = (menuPopup.style.display === 'flex') ? 'none' : 'flex';
+        if (menuPopup.style.display === 'flex') {
+            menuPopup.style.display = 'none';
+        } else {
+            menuPopup.style.display = 'flex';
+        }
     }
 
-    // えらんだごはんをあげる
+    // ✨ ごはんをあげる関数（歩行再開ロジック追加版）
     function giveFood(imgFile) {
-        // 誰かが反応中なら待つ
         if (charas.some(c => c.isReacting)) return;
         menuPopup.style.display = 'none';
 
         snack.style.backgroundImage = `url('${imgFile}')`;
         snack.style.display = 'block';
 
-        // 4人がテーブルのまわりにトコトコ集まるポジション
         const targets = [
-            { x: 100, y: 120, dir: -1 }, // テーブルの左奥
-            { x: 140, y: 100, dir: -1 }, // テーブルの手前左
-            { x: 170, y: 120, dir: 1 },  // テーブルの右奥
-            { x: 210, y: 100, dir: 1 }   // テーブルの手前右
+            { x: 100, y: 120, dir: -1 },
+            { x: 140, y: 100, dir: -1 },
+            { x: 170, y: 120, dir: 1 },
+            { x: 210, y: 100, dir: 1 }
         ];
 
         charas.forEach((c, idx) => {
@@ -321,18 +321,24 @@
             updatePosition(c);
         });
 
-        // 机の前に到着して、みんなで一斉にもぐもぐ！
+        // 机の前に到着 → もぐもぐ
         setTimeout(() => {
             charas.forEach(c => {
                 c.element.style.backgroundImage = `url('${c.imgEat}')`;
             });
-            snack.style.display = 'none'; // ごはん完食！
+            snack.style.display = 'none';
 
-            // 幸せなもぐもぐタイム
+            // 食事終了 → 通常に戻して再び歩き始める
             setTimeout(() => {
                 charas.forEach(c => {
                     c.element.style.backgroundImage = `url('${c.imgNormal}')`;
                     c.isReacting = false;
+                    updatePosition(c);   // 位置を最新状態に更新
+                });
+                
+                // ★★★ ここで全員の歩行を再起動！ ★★★
+                charas.forEach((_, index) => {
+                    setTimeout(() => walk(index), 300 + index * 200);
                 });
             }, 1500);
         }, 1600);
@@ -341,3 +347,4 @@
 
 </body>
 </html>
+
