@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>海の見える部屋のふたり（縦横無尽版）</title>
+    <title>海の見える部屋のよにん</title>
     <style>
         body {
             display: flex;
@@ -31,14 +31,13 @@
 
         /* キャラクター共通設定 */
         .character {
-            width: 100px; 
-            height: 100px;
+            width: 95px; 
+            height: 95px;
             background-size: contain;
             background-repeat: no-repeat;
             background-position: bottom center;
             position: absolute;
-            /* 縦横無尽に動くために、位置(left/bottom)と奥行サイズ(transform)のスピードを速く設定！ */
-            transition: left 1.2s ease-in-out, bottom 1.2s ease-in-out, transform 0.3s ease;
+            transition: left 1.5s ease-in-out, bottom 1.5s ease-in-out, transform 0.3s ease;
             cursor: pointer;
             user-select: none;
             z-index: 10;
@@ -57,7 +56,7 @@
             display: none;
             z-index: 30;
             white-space: nowrap;
-            transition: left 1.2s ease-in-out, bottom 1.2s ease-in-out;
+            transition: left 1.5s ease-in-out, bottom 1.5s ease-in-out;
         }
         .speech-bubble::after {
             content: '';
@@ -75,40 +74,51 @@
         /* ジャンプアニメーション */
         @keyframes jump {
             0% { transform: translate(0, 0) scale(var(--base-scale-x), var(--base-scale-y)); }
-            50% { transform: translate(0, -30px) scale(var(--base-scale-x), var(--base-scale-y)); }
+            50% { transform: translate(0, -25px) scale(var(--base-scale-x), var(--base-scale-y)); }
             100% { transform: translate(0, 0) scale(var(--base-scale-x), var(--base-scale-y)); }
         }
         .jump-animation {
             animation: jump 0.4s ease;
         }
 
-        /* ドーナツ */
+        /* ごちそう（机の上にぴったり配置） */
         .snack {
             width: 45px;
             height: 45px;
-            background-image: url('snack.png');
             background-size: contain;
             background-repeat: no-repeat;
             position: absolute;
-            bottom: 150px;
-            right: 60px;
+            bottom: 155px; /* ✨ 机の上に載る高さに調整！ */
+            right: 110px;  /* ✨ テーブルの真ん中あたりに配置！ */
             display: none;
-            z-index: 5;
+            z-index: 15;
         }
 
-        /* 操作ボタン */
+        /* 操作パネル */
         .controls {
             position: absolute;
             bottom: 15px;
             width: 100%;
             display: flex;
-            justify-content: center;
-            gap: 15px;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
             z-index: 40;
         }
+
+        /* ごはん選択メニュー */
+        .menu-popup {
+            display: none;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            gap: 8px;
+        }
+
         button {
-            padding: 10px 20px;
-            font-size: 13px;
+            padding: 8px 16px;
+            font-size: 12px;
             font-weight: bold;
             border: none;
             border-radius: 25px;
@@ -117,6 +127,10 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.15);
             cursor: pointer;
         }
+        .menu-btn {
+            background-color: #00796b;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -124,50 +138,44 @@
 <div class="stage-container" id="stage">
     <div id="bubble1" class="speech-bubble"></div>
     <div id="bubble2" class="speech-bubble"></div>
+    <div id="bubble3" class="speech-bubble"></div>
+    <div id="bubble4" class="speech-bubble"></div>
 
     <div id="chara1" class="character" onclick="tapChara(1)"></div>
     <div id="chara2" class="character" onclick="tapChara(2)"></div>
+    <div id="chara3" class="character" onclick="tapChara(3)"></div>
+    <div id="chara4" class="character" onclick="tapChara(4)"></div>
 
     <div id="snack" class="snack"></div>
 
     <div class="controls">
-        <button onclick="giveSnackAll()">ふたりにおやつ</button>
+        <div id="menuPopup" class="menu-popup">
+            <button onclick="giveFood('snack.png')">🍩 ドーナツ</button>
+            <button onclick="giveFood('food_meat.png')">🍖 ほねつき肉</button>
+            <button onclick="giveFood('food_omurice.png')">🍳 オムライス</button>
+        </div>
+        <button class="menu-btn" onclick="toggleMenu()">みんなにごはんをあげる</button>
     </div>
 </div>
 
 <script>
     const snack = document.getElementById('snack');
+    const menuPopup = document.getElementById('menuPopup');
 
+    // 4人の豪華なスターシステムデータ
     const charas = [
-        {
-            id: 1,
-            element: document.getElementById('chara1'),
-            bubble: document.getElementById('bubble1'),
-            imgNormal: 'chara_normal.png',
-            imgEat: 'chara_eat.png',
-            x: 60,
-            y: 80, // ✨ 縦（高さ）の初期位置
-            direction: 1, 
-            isReacting: false
-        },
-        {
-            id: 2,
-            element: document.getElementById('chara2'),
-            bubble: document.getElementById('bubble2'),
-            imgNormal: 'chara_island.png',
-            imgEat: 'chara_island_eat.png',
-            x: 180,
-            y: 110, // ✨ 縦（高さ）の初期位置
-            direction: 1,
-            isReacting: false
-        }
+        { id: 1, element: document.getElementById('chara1'), bubble: document.getElementById('bubble1'), imgNormal: 'chara_normal.png', imgEat: 'chara_eat.png', x: 40, y: 60, direction: 1, isReacting: false },
+        { id: 2, element: document.getElementById('chara2'), bubble: document.getElementById('bubble2'), imgNormal: 'chara_island.png', imgEat: 'chara_island_eat.png', x: 120, y: 110, direction: 1, isReacting: false },
+        { id: 3, element: document.getElementById('chara3'), bubble: document.getElementById('bubble3'), imgNormal: 'chara_death.png', imgEat: 'chara_death_eat.png', x: 200, y: 70, direction: 1, isReacting: false },
+        { id: 4, element: document.getElementById('chara4'), bubble: document.getElementById('bubble4'), imgNormal: 'chara_priest.png', imgEat: 'chara_priest_eat.png', x: 260, y: 120, direction: 1, isReacting: false }
     ];
 
+    // 賑やかな会話セリフ
     const chatPhrases = [
-        ["あ、こんにちは！", "ふふ、こんにちは。"],
-        ["海がきれいで落ち着くねー", "本当、ずっと見ていられる。"],
-        ["今日のおやつは何かな？", "ドーナツだといいなぁ。"],
-        ["ちょっとそこのいてー！", "あはは、ごめんごめん！"],
+        ["あ、こんにちは！", "ふふ、こんにちはー。"],
+        ["海がきれいで落ち着くね", "今日のごはんは何かな？"],
+        ["お仕事お疲れ様です！", "あはは、ありがとう！"],
+        ["ちょっとそこ通してー！", "わわ、ごめんごめん！"],
         ["ねえねえ！", "なぁに？"]
     ];
 
@@ -177,113 +185,96 @@
         updatePosition(c);
     });
 
-    // 🏃‍♂️ キャラの位置と大きさを一括で更新する魔法の関数
+    // 画面更新（奥行き対応）
     function updatePosition(c) {
         c.element.style.left = c.x + 'px';
         c.element.style.bottom = c.y + 'px';
 
-        // 💡 奥行き計算：お部屋の奥（yの数値が大きい）にいくほど、キャラをちょっと小さくする
-        // 手前(y=40)なら100%、奥(y=160)なら70%のサイズ感
-        const scaleFactor = 1 - ((c.y - 40) / 120) * 0.3;
+        // 奥行き：奥(y=160)に行くほど小さく(65%)、手前(y=40)ほど大きく(100%)
+        const scaleFactor = 1 - ((c.y - 40) / 120) * 0.35;
         const scaleX = c.direction * scaleFactor;
         const scaleY = scaleFactor;
 
-        // 次のアニメーション（ジャンプなど）にサイズを引き継ぐための変数
         c.element.style.setProperty('--base-scale-x', scaleX);
         c.element.style.setProperty('--base-scale-y', scaleY);
-
         c.element.style.transform = `scale(${scaleX}, ${scaleY})`;
         
-        // 重なり順の調整（手前にいるキャラ(yが小さい)を上に表示する）
+        // 前後関係をy座標で入れ替える
         c.element.style.zIndex = 20 - Math.floor(c.y / 10);
 
-        // 吹き出しの位置も追従
-        c.bubble.style.left = (c.x + 10) + 'px';
-        c.bubble.style.bottom = (c.y + 105 * scaleFactor) + 'px';
+        // 吹き出し追従
+        c.bubble.style.left = (c.x + 5) + 'px';
+        c.bubble.style.bottom = (c.y + 100 * scaleFactor) + 'px';
     }
 
-    // 1. 縦横無尽にウロウロ歩く
+    // 縦横無尽にトコトコ歩く
     function walk(charaIndex) {
         const c = charas[charaIndex];
         if (c.isReacting) return;
 
-        // 横の移動範囲 (20px 〜 230px)
-        const newX = Math.floor(Math.random() * 210) + 20;
-        // 縦（奥行き）の移動範囲 (40px 〜 150px の間で自由に動く！)
-        const newY = Math.floor(Math.random() * 110) + 40;
+        const newX = Math.floor(Math.random() * 215) + 15;
+        const newY = Math.floor(Math.random() * 110) + 40; // 歩く範囲
         
-        // 左右反転の判定
-        if (newX < c.x) {
-            c.direction = 1;  // 左を向く
-        } else {
-            c.direction = -1; // 右を向く
-        }
-        
+        c.direction = (newX < c.x) ? 1 : -1;
         c.x = newX;
         c.y = newY;
 
         updatePosition(c);
-        checkChat();
+        
+        // たまにおしゃべりが発生するかチェック
+        if (Math.random() < 0.2) {
+            checkChat();
+        }
 
-        // 次に動くまでの時間を「1秒〜2.5秒」に短縮して大忙しに！
-        const nextTime = Math.floor(Math.random() * 1500) + 1000;
-        setTimeout(() => walk(charaIndex), nextTime);
+        setTimeout(() => walk(charaIndex), Math.floor(Math.random() * 1800) + 1200);
     }
     
-    // 二人を出発させる
-    setTimeout(() => walk(0), 0);
-    setTimeout(() => walk(1), 500);
+    // 4人全員を時間差で出発させる
+    charas.forEach((_, index) => {
+        setTimeout(() => walk(index), index * 400);
+    });
 
-    // 2. おしゃべりするシステム
+    // おしゃべり発生チェック
     function checkChat() {
-        // 縦も横も位置が近くなったらおしゃべり
-        const distanceX = Math.abs(charas[0].x - charas[1].x);
-        const distanceY = Math.abs(charas[0].y - charas[1].y);
+        // ランダムに2人選んで距離が近ければおしゃべり
+        const i1 = Math.floor(Math.random() * 4);
+        const i2 = (i1 + 1) % 4;
+        const c1 = charas[i1];
+        const c2 = charas[i2];
 
-        if (distanceX < 70 && distanceY < 40 && !charas[0].isReacting && !charas[1].isReacting) {
-            // おしゃべり確率を少し調整して、歩くのを邪魔しすぎないように
-            if (Math.random() > 0.4) return; 
+        if (!c1.isReacting && !c2.isReacting) {
+            const dist = Math.abs(c1.x - c2.x) + Math.abs(c1.y - c2.y);
+            if (dist < 90) {
+                c1.isReacting = true;
+                c2.isReacting = true;
 
-            charas[0].isReacting = true;
-            charas[1].isReacting = true;
+                const pair = chatPhrases[Math.floor(Math.random() * chatPhrases.length)];
+                
+                // 向き合わせる
+                c1.direction = (c1.x < c2.x) ? -1 : 1;
+                c2.direction = (c2.x < c1.x) ? -1 : 1;
+                updatePosition(c1);
+                updatePosition(c2);
 
-            const randomPair = chatPhrases[Math.floor(Math.random() * chatPhrases.length)];
-            
-            // 向き合わせる
-            const factor0 = parseFloat(charas[0].element.style.getPropertyValue('--base-scale-y')) || 1;
-            const factor1 = parseFloat(charas[1].element.style.getPropertyValue('--base-scale-y')) || 1;
+                c1.bubble.innerText = pair[0];
+                c1.bubble.style.display = 'block';
 
-            if (charas[0].x < charas[1].x) {
-                charas[0].element.style.transform = `scale(${-1 * factor0}, ${factor0})`;
-                charas[1].element.style.transform = `scale(${1 * factor1}, ${factor1})`;
-            } else {
-                charas[0].element.style.transform = `scale(${1 * factor0}, ${factor0})`;
-                charas[1].element.style.transform = `scale(${-1 * factor1}, ${factor1})`;
+                setTimeout(() => {
+                    c2.bubble.innerText = pair[1];
+                    c2.bubble.style.display = 'block';
+                }, 700);
+
+                setTimeout(() => {
+                    c1.bubble.style.display = 'none';
+                    c2.bubble.style.display = 'none';
+                    c1.isReacting = false;
+                    c2.isReacting = false;
+                }, 2600);
             }
-
-            // 1人目発言
-            charas[0].bubble.innerText = randomPair[0];
-            charas[0].bubble.style.display = 'block';
-
-            // 0.8秒後に2人目発言
-            setTimeout(() => {
-                charas[1].bubble.innerText = randomPair[1];
-                charas[1].bubble.style.display = 'block';
-            }, 800);
-
-            // 2.5秒後に会話終了、解散
-            setTimeout(() => {
-                charas[0].bubble.style.display = 'none';
-                charas[1].bubble.style.display = 'none';
-                charas[0].isReacting = false;
-                charas[1].isReacting = false;
-                updatePosition(charas[0]);
-                updatePosition(charas[1]);
-            }, 2500);
         }
     }
 
-    // 3. タップしたときのリアクション
+    // タップリアクション
     function tapChara(id) {
         const c = charas.find(item => item.id === id);
         if (c.isReacting) return;
@@ -300,43 +291,53 @@
         }, 400);
     }
 
-    // 4. ふたりにおやつをあげる
-    function giveSnackAll() {
-        if (charas[0].isReacting || charas[1].isReacting) return;
-        
-        charas[0].isReacting = true;
-        charas[1].isReacting = true;
+    // メニューを開閉
+    function toggleMenu() {
+        menuPopup.style.display = (menuPopup.style.display === 'flex') ? 'none' : 'flex';
+    }
 
+    // えらんだごはんをあげる
+    function giveFood(imgFile) {
+        // 誰かが反応中なら待つ
+        if (charas.some(c => c.isReacting)) return;
+        menuPopup.style.display = 'none';
+
+        snack.style.backgroundImage = `url('${imgFile}')`;
         snack.style.display = 'block';
 
-        // おやつの近く（手前側）へダッシュ！
-        charas[0].direction = -1;
-        charas[0].x = 160;
-        charas[0].y = 120;
-        updatePosition(charas[0]);
-        
-        charas[1].direction = -1;
-        charas[1].x = 220;
-        charas[1].y = 130;
-        updatePosition(charas[1]);
+        // 4人がテーブルのまわりにトコトコ集まるポジション
+        const targets = [
+            { x: 100, y: 120, dir: -1 }, // テーブルの左奥
+            { x: 140, y: 100, dir: -1 }, // テーブルの手前左
+            { x: 170, y: 120, dir: 1 },  // テーブルの右奥
+            { x: 210, y: 100, dir: 1 }   // テーブルの手前右
+        ];
 
+        charas.forEach((c, idx) => {
+            c.isReacting = true;
+            c.x = targets[idx].x;
+            c.y = targets[idx].y;
+            c.direction = targets[idx].dir;
+            updatePosition(c);
+        });
+
+        // 机の前に到着して、みんなで一斉にもぐもぐ！
         setTimeout(() => {
-            charas[0].element.style.backgroundImage = `url('${charas[0].imgEat}')`;
-            charas[1].element.style.backgroundImage = `url('${charas[1].imgEat}')`;
-            snack.style.display = 'none';
+            charas.forEach(c => {
+                c.element.style.backgroundImage = `url('${c.imgEat}')`;
+            });
+            snack.style.display = 'none'; // ごはん完食！
 
+            // 幸せなもぐもぐタイム
             setTimeout(() => {
-                charas[0].element.style.backgroundImage = `url('${charas[0].imgNormal}')`;
-                charas[1].element.style.backgroundImage = `url('${charas[1].imgNormal}')`;
-                charas[0].isReacting = false;
-                charas[1].isReacting = false;
-                updatePosition(charas[0]);
-                updatePosition(charas[1]);
-            }, 1200);
-        }, 1300);
+                charas.forEach(c => {
+                    c.element.style.backgroundImage = `url('${c.imgNormal}')`;
+                    c.isReacting = false;
+                });
+            }, 1500);
+        }, 1600);
     }
 </script>
 
 </body>
 </html>
-
