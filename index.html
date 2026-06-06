@@ -609,7 +609,7 @@ stage.addEventListener('click', e => {
     ];
     charas.forEach((c, i) => {
         c.x = Math.max(0, Math.min(tapX + offsets[i].dx, 255));
-        c.y = Math.max(40, Math.min(tapY + offsets[i].dy, 150));
+        c.y = Math.max(40, Math.min(tapY + offsets[i].dy, 450));
         c.direction = (i < 2) ? -1 : 1;
         updatePosition(c, true);
     });
