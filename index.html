@@ -407,7 +407,7 @@ function makeDraggable(chara) {
         if (Math.abs(dx) > 5 || Math.abs(dy) > 5) dragMoved = true;
 
         chara.x = Math.max(0, Math.min(startCharaX + dx, 255));
-        chara.y = Math.max(10, Math.min(startCharaY - dy, 400));
+        chara.y = Math.max(40, Math.min(startCharaY - dy, 430));
         updatePosition(chara, false);
     }
 
@@ -423,7 +423,7 @@ function makeDraggable(chara) {
             // ★ スケール変化を防ぐため：
             //   1) まずtransition=noneのままy座標を着地範囲にクランプ
             //   2) 1フレーム後にtransitionを戻す
-            if (chara.y > 400) chara.y = 400;
+            if (chara.y > 430) chara.y = 430;
             if (chara.y < 40)  chara.y = 40;
 
             // transition=noneで座標だけ確定させる
