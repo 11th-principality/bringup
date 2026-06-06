@@ -315,6 +315,16 @@ function checkChat() {
     }, 2600);
 }
 
+// ── 夜に起こしたあと再び寝かせる（共通） ────────────────────
+function scheduleNightSleep(c) {
+    if (currentTimeOfDay !== 3) return;
+    setTimeout(() => {
+        if (!c.isSleeping && !c.isDragging && !c.isReacting && currentTimeOfDay === 3) {
+            sleepChara(c);
+        }
+    }, Math.floor(Math.random() * 4000) + 5000);
+}
+
 // ── ねんね処理（長押しから呼ばれる） ────────────────────────
 function sleepChara(c) {
     if (c.isReacting || c.isSleeping || c.isDragging) return;
@@ -357,14 +367,7 @@ function makeDraggable(chara) {
 
             // 夜なのでゆっくり歩かせる
             scheduleWalk(chara);
-
-            // しばらくしたらまた寝る
-            setTimeout(() => {
-                if (!chara.isSleeping && !chara.isDragging && !chara.isReacting && currentTimeOfDay === 3) {
-                    sleepChara(chara);
-                }
-            }, Math.floor(Math.random() * 4000) + 5000);
-
+            scheduleNightSleep(chara);
             return;
         }
         if (chara.isSleeping) return;
@@ -501,14 +504,7 @@ function tapChara(c) {
         c.element.classList.remove('sleep');
         c.bubble.style.display = 'none';
         scheduleWalk(c);
-
-        // しばらくしたらまた寝る
-        setTimeout(() => {
-            if (!c.isSleeping && !c.isDragging && !c.isReacting && currentTimeOfDay === 3) {
-                sleepChara(c);
-            }
-        }, Math.floor(Math.random() * 4000) + 5000);
-
+        scheduleNightSleep(c);
         return;
     }
     if (c.isReacting || c.isSleeping || c.isDragging) return;
@@ -577,6 +573,7 @@ function giveFood(imgFile) {
                 c.isReacting = false;
                 updatePosition(c, true);
                 scheduleWalk(c);
+                scheduleNightSleep(c);
             });
         }, 1500);
     }, 1600);
@@ -589,7 +586,7 @@ stage.addEventListener('click', e => {
 
     // 寝ている子は起こす
     charas.forEach(c => {
-        if (c.isSleeping) {
+      if (c.isSleeping) {
             c.isSleeping = false;
             c.element.style.backgroundImage = `url('${c.imgNormal}')`;
             c.element.classList.remove('sleep');
@@ -621,6 +618,7 @@ stage.addEventListener('click', e => {
         charas.forEach(c => {
             c.isReacting = false;
             scheduleWalk(c);
+            scheduleNightSleep(c);
         });
     }, 1800);
 });
