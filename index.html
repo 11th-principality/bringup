@@ -348,8 +348,14 @@ function makeDraggable(chara) {
     function onDragStart(clientX, clientY) {
         // 夜に寝ている子はタップで起こす（ドラッグはしない）
         if (chara.isSleeping && currentTimeOfDay === 3) {
-            tapChara(chara);
-            return;
+            chara.isSleeping = false;
+            chara.element.style.backgroundImage = `url('${chara.imgNormal}')`;
+            chara.element.classList.remove('sleep');
+            chara.bubble.style.display = 'none';
+
+            // 夜なのでゆっくり歩かせる
+            scheduleWalk(chara);
+            return; // ← 追加：ここで処理を終了し、ドラッグ処理に入らない
         }
         if (chara.isSleeping) return;
         dragging    = true;
