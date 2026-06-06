@@ -407,7 +407,7 @@ function makeDraggable(chara) {
         if (Math.abs(dx) > 5 || Math.abs(dy) > 5) dragMoved = true;
 
         chara.x = Math.max(0, Math.min(startCharaX + dx, 255));
-        chara.y = Math.max(10, Math.min(startCharaY - dy, 440));
+        chara.y = Math.max(10, Math.min(startCharaY - dy, 150));
         updatePosition(chara, false);
     }
 
