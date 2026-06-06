@@ -219,7 +219,7 @@ const charas = [
 ];
 
 const chatPhrases = [
-    ["🫧","🌱"],["☀️","🌟"],["🌊","🌈"],["🌸","🍀"],["🌻","💐"],["🍩","☕"],["🍨","🍵"]
+    ["🫧","🌱"],["☀️","🌟"],["🌊","🌈"],["🌸","🍀"],["🌻","💐"],["🍩","🍨"],["🍵","☕"]
 ];
 
 // ── 位置・スケール更新 ───────────────────────────────────
@@ -346,6 +346,11 @@ function makeDraggable(chara) {
     let longPressTimer = null;  // 長押し判定タイマー
 
     function onDragStart(clientX, clientY) {
+        // 夜に寝ている子はタップで起こす（ドラッグはしない）
+        if (chara.isSleeping && currentTimeOfDay === 3) {
+            tapChara(chara);
+            return;
+        }
         if (chara.isSleeping) return;
         dragging    = true;
         dragMoved   = false;
@@ -502,8 +507,18 @@ function toggleMenu() {
 }
 
 function giveFood(imgFile) {
-    if (charas.some(c => c.isReacting || c.isSleeping)) return;
+    if (charas.some(c => c.isReacting)) return;
     menuPopup.style.display = 'none';
+
+    // 寝ている子は起こしてから集合
+    charas.forEach(c => {
+        if (c.isSleeping) {
+            c.isSleeping = false;
+            c.element.style.backgroundImage = `url('${c.imgNormal}')`;
+            c.element.classList.remove('sleep');
+            c.bubble.style.display = 'none';
+        }
+    });
 
     charas.forEach(c => {
         if (c.walkTimer) { clearTimeout(c.walkTimer); c.walkTimer = null; }
