@@ -219,7 +219,7 @@ const charas = [
 ];
 
 const chatPhrases = [
-    ["🫧","🌱"],["☀️","🌟"],["🌊","🌈"],["🌸","🍀"],["🌻","💐"],["🍩","🍨"],["🍵","☕"]
+    ["🫧","🌱"],["☀️","🌟"],["🌊","🌈"],["🌸","🍀"],["🌻","💐"]
 ];
 
 // ── 位置・スケール更新 ───────────────────────────────────
@@ -272,13 +272,27 @@ function doWalk(c) {
         return;
     }
     const newX = Math.floor(Math.random() * 215) + 15;
-    const newY = Math.floor(Math.random() * 110) + 40;
+    const top = c.maxY ?? 150;
+    const newY = Math.floor(Math.random() * (top - 40)) + 40;
     c.direction = (newX < c.x) ? 1 : -1;
     c.x = newX;
     c.y = newY;
     updatePosition(c, true);
     if (Math.random() < 0.15) checkChat();
-    scheduleWalk(c);
+
+    if (currentTimeOfDay === 3) {
+        // 夜は1回歩いたらまた寝る
+        c.walkTimer = setTimeout(() => {
+            c.walkTimer = null;
+            if (!c.isReacting && !c.isDragging && currentTimeOfDay === 3) {
+                c.isSleeping = true;
+                c.element.style.backgroundImage = `url('${c.imgSleep}')`;
+                c.element.classList.add('sleep');
+            }
+        }, Math.floor(Math.random() * 2000) + 2000);
+    } else {
+        scheduleWalk(c);
+    }
 }
 
 // 初期化
@@ -423,7 +437,7 @@ function makeDraggable(chara) {
 
             chara.element.style.backgroundImage = `url('${chara.imgNormal}')`;
             chara.isReacting = false;
-            showBubble(chara, '💦');
+            showBubble(chara, 'きゃー😵💕');
             setTimeout(() => { if (!chara.isReacting) chara.bubble.style.display = 'none'; }, 1400);
             scheduleWalk(chara);
 
