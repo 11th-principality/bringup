@@ -242,7 +242,7 @@ function updatePosition(c, animate) {
 
     // ★ scaleXだけ方向を掛ける。transformはscaleのみ（bottomで高さ管理するためtranslateYを使わない）
     c.element.style.transform = `scaleX(${c.direction * scaleFactor}) scaleY(${scaleFactor})`;
-    c.element.style.zIndex    = 20 - Math.floor(c.y / 10);
+    c.element.style.zIndex    = c.isDragging ? 100 : Math.max(1, 20 - Math.floor(c.y / 10));
 
     c.bubble.style.left   = (c.x + 5) + 'px';
     c.bubble.style.bottom = (c.y + 90 * scaleFactor) + 'px';
@@ -384,8 +384,11 @@ function makeDraggable(chara) {
         const dx = clientX - startClientX;
         const dy = clientY - startClientY;
 
-        // 5px以上動いたらドラッグとみなす
-        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) dragMoved = true;
+        // 5px以上動いたらドラッグとみなす＋長押しタイマーを止める
+        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+            dragMoved = true;
+            clearTimeout(longPressTimer);
+        }
 
         chara.x = Math.max(0, Math.min(startCharaX + dx, 255));
         chara.y = Math.max(10, Math.min(startCharaY - dy, 440));
@@ -404,8 +407,10 @@ function makeDraggable(chara) {
             // ★ スケール変化を防ぐため：
             //   1) まずtransition=noneのままy座標を着地範囲にクランプ
             //   2) 1フレーム後にtransitionを戻す
-            if (chara.y > 150) chara.y = 150;
-            if (chara.y < 40)  chara.y = 40;
+            // キャラごとの上限に合わせてクランプ
+            const landMax = chara.maxY ?? 150;
+            if (chara.y > landMax) chara.y = landMax;
+            if (chara.y < 40)     chara.y = 40;
 
             // transition=noneで座標だけ確定させる
             updatePosition(chara, false);
