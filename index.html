@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ちいさい春木大佐たちの部屋</title>
+    <title>海の見える部屋のよにん</title>
     <style>
         body {
             display: flex;
@@ -192,6 +192,11 @@ function updateBackground() {
     if (t !== currentTimeOfDay) {
         currentTimeOfDay = t;
         stage.style.backgroundImage = `url('${backgrounds[t]}')`;
+        if (t === 3) {
+            startNightMode();
+        } else {
+            endNightMode();
+        }
     }
 }
 setInterval(updateBackground, 30000);
@@ -207,14 +212,14 @@ const charas = [
       x:120, y:110, direction:1, isReacting:false, isSleeping:false, isDragging:false, petCount:0, walkTimer:null },
     { id:3, element:document.getElementById('chara3'), bubble:document.getElementById('bubble3'),
       imgNormal:'chara_death.png',   imgEat:'chara_death_eat.png',  imgSleep:'chara3_sleep.png', imgKyaa:'chara3_kyaa.png',
-      x:200, y:70,  direction:1, isReacting:false, isSleeping:false, isDragging:false, petCount:0, walkTimer:null , maxY:320},
+      x:200, y:70,  direction:1, isReacting:false, isSleeping:false, isDragging:false, petCount:0, walkTimer:null },
     { id:4, element:document.getElementById('chara4'), bubble:document.getElementById('bubble4'),
       imgNormal:'chara_priest.png',  imgEat:'chara_priest_eat.png', imgSleep:'chara4_sleep.png', imgKyaa:'chara4_kyaa.png',
       x:260, y:120, direction:1, isReacting:false, isSleeping:false, isDragging:false, petCount:0, walkTimer:null }
 ];
 
 const chatPhrases = [
-    ["🫧","🌱"],["☀️","🌟"],["🌊","🌈"],["🌸","🍀"],["🌻","💐"],["☕","🍵"],["🍩","🍨"]
+    ["🫧","🌱"],["☀️","🌟"],["🌊","🌈"],["🌸","🍀"],["🌻","💐"]
 ];
 
 // ── 位置・スケール更新 ───────────────────────────────────
@@ -237,7 +242,7 @@ function updatePosition(c, animate) {
 
     // ★ scaleXだけ方向を掛ける。transformはscaleのみ（bottomで高さ管理するためtranslateYを使わない）
     c.element.style.transform = `scaleX(${c.direction * scaleFactor}) scaleY(${scaleFactor})`;
-    c.element.style.zIndex = Math.max(1, 20 - Math.floor(c.y / 10));
+    c.element.style.zIndex    = 20 - Math.floor(c.y / 10);
 
     c.bubble.style.left   = (c.x + 5) + 'px';
     c.bubble.style.bottom = (c.y + 90 * scaleFactor) + 'px';
@@ -251,10 +256,14 @@ function showBubble(c, text) {
 // ── 歩行システム ──────────────────────────────────────────
 function scheduleWalk(c) {
     if (c.walkTimer) return;
+    // 夜はゆっくり（4000〜7000ms）、それ以外は通常（1200〜3000ms）
+    const delay = (currentTimeOfDay === 3)
+        ? Math.floor(Math.random() * 3000) + 4000
+        : Math.floor(Math.random() * 1800) + 1200;
     c.walkTimer = setTimeout(() => {
         c.walkTimer = null;
         doWalk(c);
-    }, Math.floor(Math.random() * 1800) + 1200);
+    }, delay);
 }
 
 function doWalk(c) {
@@ -263,8 +272,7 @@ function doWalk(c) {
         return;
     }
     const newX = Math.floor(Math.random() * 215) + 15;
-      const top = c.maxY ?? 150;
-    const newY = Math.floor(Math.random() * (top - 40)) + 40;
+    const newY = Math.floor(Math.random() * 110) + 40;
     c.direction = (newX < c.x) ? 1 : -1;
     c.x = newX;
     c.y = newY;
@@ -404,7 +412,7 @@ function makeDraggable(chara) {
 
             chara.element.style.backgroundImage = `url('${chara.imgNormal}')`;
             chara.isReacting = false;
-            showBubble(chara, '💦');
+            showBubble(chara, 'きゃー😵💕');
             setTimeout(() => { if (!chara.isReacting) chara.bubble.style.display = 'none'; }, 1400);
             scheduleWalk(chara);
 
@@ -464,6 +472,15 @@ function doPyon(c, onFinish) {
 
 // ── タップ → ぴょこんジャンプのみ ───────────────────────────
 function tapChara(c) {
+    // 夜に寝ているときはタップで起こす
+    if (c.isSleeping && currentTimeOfDay === 3) {
+        c.isSleeping = false;
+        c.element.style.backgroundImage = `url('${c.imgNormal}')`;
+        c.element.classList.remove('sleep');
+        c.bubble.style.display = 'none';
+        scheduleWalk(c);
+        return;
+    }
     if (c.isReacting || c.isSleeping || c.isDragging) return;
     c.isReacting = true;
     spawnHeart(c);
@@ -524,40 +541,30 @@ function giveFood(imgFile) {
         }, 1500);
     }, 1600);
 }
-    // ── 床タップで集まる ────────────────────────────────────
-stage.addEventListener('click', e => {
-    // キャラ自身をタップした時は除外
-    if (e.target !== stage) return;
-
-    const stageRect = stage.getBoundingClientRect();
-    const tapX = e.clientX - stageRect.left;
-    const tapY = stageRect.bottom - e.clientY;  // bottomからの座標に変換
-
-    // 地面の範囲にクランプ
-    const destY = Math.max(40, Math.min(tapY, 150));
-
-    charas.forEach((c, i) => {
-        if (c.isSleeping || c.isDragging) return;
-        c.isReacting = true;
-
-        // 少しずつずらして重ならないように
-        const offset = (i - 1.5) * 40;
-        c.x = Math.max(10, Math.min(tapX + offset, 245));
-        c.y = destY;
-        c.direction = (tapX + offset < c.x) ? 1 : -1;
-        updatePosition(c, true);
-
-        // 着いたら吹き出しを出して歩行再開
-        setTimeout(() => {
-            showBubble(c, ['🌟','💫','✨','🎵'][i]);
-            c.isReacting = false;
-            setTimeout(() => {
-                c.bubble.style.display = 'none';
-                scheduleWalk(c);
-            }, 1200);
-        }, 1600);
+// ── 夜モード ─────────────────────────────────────────────
+function startNightMode() {
+    charas.forEach(c => {
+        if (c.walkTimer) { clearTimeout(c.walkTimer); c.walkTimer = null; }
+        if (!c.isSleeping && !c.isDragging) {
+            c.isSleeping = true;
+            c.element.style.backgroundImage = `url('${c.imgSleep}')`;
+            c.element.classList.add('sleep');
+        }
     });
-});
+}
+
+function endNightMode() {
+    charas.forEach(c => {
+        if (c.isSleeping) {
+            c.isSleeping = false;
+            c.element.style.backgroundImage = `url('${c.imgNormal}')`;
+            c.element.classList.remove('sleep');
+            c.bubble.style.display = 'none';
+            scheduleWalk(c);
+        }
+    });
+}
 </script>
 </body>
 </html>
+
