@@ -599,6 +599,41 @@ function endNightMode() {
         }
     });
 }
+    // ── 床タップで集まる ────────────────────────────────────
+stage.addEventListener('click', e => {
+    if (e.target !== stage) return;
+
+    const stageRect = stage.getBoundingClientRect();
+    const tapX = e.clientX - stageRect.left;
+    const tapY = stageRect.bottom - e.clientY;
+
+    const destY = Math.max(40, Math.min(tapY, 150));
+
+    charas.forEach((c, i) => {
+        if (c.isDragging) return;
+        if (c.isSleeping) {
+            c.isSleeping = false;
+            c.element.style.backgroundImage = `url('${c.imgNormal}')`;
+            c.element.classList.remove('sleep');
+            c.bubble.style.display = 'none';
+        }
+        c.isReacting = true;
+        const offset = (i - 1.5) * 40;
+        c.x = Math.max(10, Math.min(tapX + offset, 245));
+        c.y = destY;
+        c.direction = (tapX + offset < c.x) ? 1 : -1;
+        updatePosition(c, true);
+
+        setTimeout(() => {
+            showBubble(c, ['🌟','💫','✨','🎵'][i]);
+            c.isReacting = false;
+            setTimeout(() => {
+                c.bubble.style.display = 'none';
+                scheduleWalk(c);
+            }, 1200);
+        }, 1600);
+    });
+});
 </script>
 </body>
 </html>
