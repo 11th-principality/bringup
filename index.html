@@ -523,6 +523,40 @@ function giveFood(imgFile) {
         }, 1500);
     }, 1600);
 }
+    // ── 床タップで集まる ────────────────────────────────────
+stage.addEventListener('click', e => {
+    // キャラ自身をタップした時は除外
+    if (e.target !== stage) return;
+
+    const stageRect = stage.getBoundingClientRect();
+    const tapX = e.clientX - stageRect.left;
+    const tapY = stageRect.bottom - e.clientY;  // bottomからの座標に変換
+
+    // 地面の範囲にクランプ
+    const destY = Math.max(40, Math.min(tapY, 150));
+
+    charas.forEach((c, i) => {
+        if (c.isSleeping || c.isDragging) return;
+        c.isReacting = true;
+
+        // 少しずつずらして重ならないように
+        const offset = (i - 1.5) * 40;
+        c.x = Math.max(10, Math.min(tapX + offset, 245));
+        c.y = destY;
+        c.direction = (tapX + offset < c.x) ? 1 : -1;
+        updatePosition(c, true);
+
+        // 着いたら吹き出しを出して歩行再開
+        setTimeout(() => {
+            showBubble(c, ['🌟','💫','✨','🎵'][i]);
+            c.isReacting = false;
+            setTimeout(() => {
+                c.bubble.style.display = 'none';
+                scheduleWalk(c);
+            }, 1200);
+        }, 1600);
+    });
+});
 </script>
 </body>
 </html>
