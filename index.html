@@ -219,7 +219,7 @@ const charas = [
 ];
 
 const chatPhrases = [
-    ["🫧","🌱"],["☀️","🌟"],["🌊","🌈"],["🌸","🍀"],["🌻","💐"]
+    ["🫧","🌱"],["☀️","🌟"],["🌊","🌈"],["🌸","🍀"],["🌻","💐"],["🍩","🍨"],["🍵","☕"]
 ];
 
 // ── 位置・スケール更新 ───────────────────────────────────
@@ -437,7 +437,7 @@ function makeDraggable(chara) {
 
             chara.element.style.backgroundImage = `url('${chara.imgNormal}')`;
             chara.isReacting = false;
-            showBubble(chara, 'きゃー😵💕');
+            showBubble(chara, '💦');
             setTimeout(() => { if (!chara.isReacting) chara.bubble.style.display = 'none'; }, 1400);
             scheduleWalk(chara);
 
