@@ -399,7 +399,7 @@
             chara.isReacting = false;
             updatePosition(chara, true);  // ← animate=true でスムーズ着地
 
-            showBubble(chara, 'きゃー😵💕');
+            showBubble(chara, '💦💦');
             setTimeout(() => {
                 if (!chara.isReacting) chara.bubble.style.display = 'none';
             }, 1400);
@@ -451,7 +451,7 @@
             c.isSleeping = true;
             c.element.style.backgroundImage = `url('${c.imgSleep}')`;
             c.element.classList.add('sleep');
-            showBubble(c, 'すぅ…すぅ…😪');
+            showBubble(c, '……💤……💤……');
 
             setTimeout(() => {
                 if (!c.isSleeping) return;
