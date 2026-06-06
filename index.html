@@ -355,7 +355,15 @@ function makeDraggable(chara) {
 
             // 夜なのでゆっくり歩かせる
             scheduleWalk(chara);
-            return; // ← 追加：ここで処理を終了し、ドラッグ処理に入らない
+
+            // しばらくしたらまた寝る
+            setTimeout(() => {
+                if (!chara.isSleeping && !chara.isDragging && !chara.isReacting && currentTimeOfDay === 3) {
+                    sleepChara(chara);
+                }
+            }, Math.floor(Math.random() * 4000) + 5000);
+
+            return;
         }
         if (chara.isSleeping) return;
         dragging    = true;
@@ -491,6 +499,14 @@ function tapChara(c) {
         c.element.classList.remove('sleep');
         c.bubble.style.display = 'none';
         scheduleWalk(c);
+
+        // しばらくしたらまた寝る
+        setTimeout(() => {
+            if (!c.isSleeping && !c.isDragging && !c.isReacting && currentTimeOfDay === 3) {
+                sleepChara(c);
+            }
+        }, Math.floor(Math.random() * 4000) + 5000);
+
         return;
     }
     if (c.isReacting || c.isSleeping || c.isDragging) return;
@@ -563,6 +579,50 @@ function giveFood(imgFile) {
         }, 1500);
     }, 1600);
 }
+// ── 余白タップで集合 ──────────────────────────────────────
+stage.addEventListener('click', e => {
+    // キャラ・吹き出し・ボタン類へのクリックは無視
+    if (e.target !== stage) return;
+    if (charas.some(c => c.isReacting)) return;
+
+    // 寝ている子は起こす
+    charas.forEach(c => {
+        if (c.isSleeping) {
+            c.isSleeping = false;
+            c.element.style.backgroundImage = `url('${c.imgNormal}')`;
+            c.element.classList.remove('sleep');
+            c.bubble.style.display = 'none';
+        }
+        if (c.walkTimer) { clearTimeout(c.walkTimer); c.walkTimer = null; }
+        c.isReacting = true;
+    });
+
+    // タップ位置を中心に集まる
+    const rect = stage.getBoundingClientRect();
+    const tapX = e.clientX - rect.left;
+    const tapY = rect.bottom - e.clientY; // bottom基準に変換
+
+    const offsets = [
+        { dx: -60, dy:  10 },
+        { dx: -20, dy: -10 },
+        { dx:  20, dy:  10 },
+        { dx:  60, dy: -10 }
+    ];
+    charas.forEach((c, i) => {
+        c.x = Math.max(0, Math.min(tapX + offsets[i].dx, 255));
+        c.y = Math.max(40, Math.min(tapY + offsets[i].dy, 150));
+        c.direction = (i < 2) ? -1 : 1;
+        updatePosition(c, true);
+    });
+
+    setTimeout(() => {
+        charas.forEach(c => {
+            c.isReacting = false;
+            scheduleWalk(c);
+        });
+    }, 1800);
+});
+
 // ── 夜モード ─────────────────────────────────────────────
 function startNightMode() {
     charas.forEach(c => {
@@ -589,4 +649,3 @@ function endNightMode() {
 </script>
 </body>
 </html>
-
