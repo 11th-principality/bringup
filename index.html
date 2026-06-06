@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>海の見える部屋のよにん</title>
+    <title>ちいさい春木大佐たちの部屋</title>
     <style>
         body {
             display: flex;
@@ -200,7 +200,7 @@ function updateBackground() {
     }
 }
 setInterval(updateBackground, 30000);
-updateBackground();
+// ※ updateBackground()の初回呼び出しはキャラ初期化の後に移動
 
 // ── キャラクター定義 ─────────────────────────────────────
 const charas = [
@@ -219,7 +219,7 @@ const charas = [
 ];
 
 const chatPhrases = [
-    ["🫧","🌱"],["☀️","🌟"],["🌊","🌈"],["🌸","🍀"],["🌻","💐"]
+    ["🫧","🌱"],["☀️","🌟"],["🌊","🌈"],["🌸","🍀"],["🌻","💐"],["🍩","☕"],["🍨","🍵"]
 ];
 
 // ── 位置・スケール更新 ───────────────────────────────────
@@ -288,6 +288,7 @@ charas.forEach(c => {
     makeDraggable(c);
     scheduleWalk(c);
 });
+updateBackground(); // キャラ定義の後に時間帯チェック（夜モード対応）
 
 // ── おしゃべりシステム ───────────────────────────────────
 function checkChat() {
@@ -412,7 +413,7 @@ function makeDraggable(chara) {
 
             chara.element.style.backgroundImage = `url('${chara.imgNormal}')`;
             chara.isReacting = false;
-            showBubble(chara, 'きゃー😵💕');
+            showBubble(chara, '💦');
             setTimeout(() => { if (!chara.isReacting) chara.bubble.style.display = 'none'; }, 1400);
             scheduleWalk(chara);
 
