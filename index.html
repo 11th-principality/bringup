@@ -170,7 +170,7 @@
     <div class="controls">
         <div id="menuPopup" class="menu-popup">
             <button onclick="giveFood('snack.png')">🍩 ドーナツ</button>
-            <button onclick="giveFood('parfait.png')"> パフェ</button>
+            <button onclick="giveFood('parfait.png')"> 🍨パフェ</button>
             <button onclick="giveFood('food_meat.png')">🍖 ほねつき肉</button>
             <button onclick="giveFood('food_omurice.png')">🍳 オムライス</button>
         </div>
@@ -200,11 +200,11 @@
     ];
 
     const chatPhrases = [
-        ["あ、こんにちは！", "ふふ、こんにちはー。"],
-        ["海がきれいで落ち着くね", "今日のごはんは何かな？"],
-        ["お仕事お疲れ様です！", "あはは、ありがとう！"],
-        ["ちょっとそこ通してー！", "わわ、ごめんごめん！"],
-        ["ねえねえ！", "なぁに？"]
+        ["🫧", "🌱"],
+        ["☀️", "🌟"],
+        ["🌊", "🌈"],
+        ["🌸", "🍀"],
+        ["🌻", "💐"]
     ];
 
     // 背景時間更新
@@ -424,7 +424,7 @@
             }, 8500);
         } else {
             // 撫でられている途中の可愛いセリフ
-            showBubble(c, c.petCount >= 3 ? 'んぅ…ねむいぃ…♡' : 'んっ…♡');
+            showBubble(c, c.petCount >= 3 ? '💕' : '💖');
             setTimeout(() => { if(!c.isSleeping && !c.isReacting) c.bubble.style.display = 'none'; }, 900);
         }
     }
