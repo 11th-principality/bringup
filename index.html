@@ -276,7 +276,7 @@ function doWalk(c) {
            // 💡 死神さん（id: 3）だけ普段の移動範囲を高くする魔法
         let newY = Math.floor(Math.random() * 110) + 40; // 通常の範囲 (40〜150)
         if (c.id === 3) {
-            newY = Math.floor(Math.random() * 120) + 100; // ✨ 死神さん専用：高めの範囲 (100〜220)
+            newY = Math.floor(Math.random() * 120) + 120; // ✨ 死神さん専用：高めの範囲 (100〜220)
         }
     c.direction = (newX < c.x) ? 1 : -1;
     c.x = newX;
