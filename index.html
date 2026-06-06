@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>海の見える部屋のよにん</title>
+    <title>海の見える部屋のよにん - フルシステム版</title>
     <style>
         body {
             display: flex;
@@ -19,7 +19,7 @@
         .stage-container {
             width: 350px;
             height: 550px;
-            background-image: url('background.png'); 
+            background-image: url('background_day.png'); 
             background-size: cover;
             background-position: center;
             border-radius: 20px;
@@ -27,6 +27,7 @@
             position: relative;
             overflow: hidden;
             border: 6px solid #fff;
+            transition: background-image 2.5s ease; /* 時間変化のフェード演出 */
         }
 
         /* キャラクター共通設定 */
@@ -38,12 +39,30 @@
             background-position: bottom center;
             position: absolute;
             transition: left 1.5s ease-in-out, bottom 1.5s ease-in-out, transform 0.3s ease;
-            cursor: pointer;
+            cursor: grab;
             user-select: none;
             z-index: 10;
         }
+        .character:active {
+            cursor: grabbing;
+        }
 
-        /* おしゃべり中の吹き出し */
+        /* すやすや眠っている時のZzzエフェクト */
+        @keyframes sleepZzz {
+            0% { opacity: 0; transform: translateY(0) scale(0.6); }
+            50% { opacity: 1; }
+            100% { opacity: 0; transform: translateY(-20px) scale(1); }
+        }
+        .character.sleep::after {
+            content: '💤';
+            position: absolute;
+            top: -10px;
+            right: 10px;
+            font-size: 16px;
+            animation: sleepZzz 2s infinite ease-in-out;
+        }
+
+        /* おしゃべり・リアクション中の吹き出し */
         .speech-bubble {
             position: absolute;
             background: white;
@@ -141,10 +160,10 @@
     <div id="bubble3" class="speech-bubble"></div>
     <div id="bubble4" class="speech-bubble"></div>
 
-    <div id="chara1" class="character" onclick="tapChara(1)"></div>
-    <div id="chara2" class="character" onclick="tapChara(2)"></div>
-    <div id="chara3" class="character" onclick="tapChara(3)"></div>
-    <div id="chara4" class="character" onclick="tapChara(4)"></div>
+    <div id="chara1" class="character"></div>
+    <div id="chara2" class="character"></div>
+    <div id="chara3" class="character"></div>
+    <div id="chara4" class="character"></div>
 
     <div id="snack" class="snack"></div>
 
@@ -159,38 +178,65 @@
 </div>
 
 <script>
+    const stage = document.getElementById('stage');
     const snack = document.getElementById('snack');
     const menuPopup = document.getElementById('menuPopup');
 
-    // 4人の豪華なスターシステムデータ
+    // === 1. 好感度・状態・時間管理データ ===
+    let currentTimeOfDay = -1; 
+    const backgrounds = {
+        0: 'background_morning.png',   // 朝 5:00〜10:59
+        1: 'background_day.png',       // 昼 11:00〜16:59
+        2: 'background_evening.png',   // 夕 17:00〜20:59
+        3: 'background_night.png'      // 夜 21:00〜4:59
+    };
+
     const charas = [
-        { id: 1, element: document.getElementById('chara1'), bubble: document.getElementById('bubble1'), imgNormal: 'chara_normal.png', imgEat: 'chara_eat.png', x: 40, y: 60, direction: 1, isReacting: false },
-        { id: 2, element: document.getElementById('chara2'), bubble: document.getElementById('bubble2'), imgNormal: 'chara_island.png', imgEat: 'chara_island_eat.png', x: 120, y: 110, direction: 1, isReacting: false },
-        { id: 3, element: document.getElementById('chara3'), bubble: document.getElementById('bubble3'), imgNormal: 'chara_death.png', imgEat: 'chara_death_eat.png', x: 200, y: 70, direction: 1, isReacting: false },
-        { id: 4, element: document.getElementById('chara4'), bubble: document.getElementById('bubble4'), imgNormal: 'chara_priest.png', imgEat: 'chara_priest_eat.png', x: 260, y: 120, direction: 1, isReacting: false }
+        { id: 1, element: document.getElementById('chara1'), bubble: document.getElementById('bubble1'), imgNormal: 'chara_normal.png', imgEat: 'chara_eat.png', imgSleep: 'chara1_sleep.png', imgKyaa: 'chara1_kyaa.png', x: 40, y: 60, direction: 1, isReacting: false, isSleeping: false, petCount: 0 },
+        { id: 2, element: document.getElementById('chara2'), bubble: document.getElementById('bubble2'), imgNormal: 'chara_island.png', imgEat: 'chara_island_eat.png', imgSleep: 'chara2_sleep.png', imgKyaa: 'chara2_kyaa.png', x: 120, y: 110, direction: 1, isReacting: false, isSleeping: false, petCount: 0 },
+        { id: 3, element: document.getElementById('chara3'), bubble: document.getElementById('bubble3'), imgNormal: 'chara_death.png', imgEat: 'chara_death_eat.png', imgSleep: 'chara3_sleep.png', imgKyaa: 'chara3_kyaa.png', x: 200, y: 70, direction: 1, isReacting: false, isSleeping: false, petCount: 0 },
+        { id: 4, element: document.getElementById('chara4'), bubble: document.getElementById('bubble4'), imgNormal: 'chara_priest.png', imgEat: 'chara_priest_eat.png', imgSleep: 'chara4_sleep.png', imgKyaa: 'chara4_kyaa.png', x: 260, y: 120, direction: 1, isReacting: false, isSleeping: false, petCount: 0 }
     ];
 
-    // 賑やかな会話セリフ
     const chatPhrases = [
-        ["🌱", "🌸"],
-        ["🌊", "🐦️"],
-        ["🍵", "💖"],
-        ["🍩", "💦"],
-        ["🎀", "🐕"]
+        ["あ、こんにちは！", "ふふ、こんにちはー。"],
+        ["海がきれいで落ち着くね", "今日のごはんは何かな？"],
+        ["お仕事お疲れ様です！", "あはは、ありがとう！"],
+        ["ちょっとそこ通してー！", "わわ、ごめんごめん！"],
+        ["ねえねえ！", "なぁに？"]
     ];
 
-    // 初期化
+    // 背景時間更新
+    function getTimeOfDay() {
+        const hour = new Date().getHours();
+        if (hour >= 5 && hour < 11) return 0;      
+        if (hour >= 11 && hour < 17) return 1;     
+        if (hour >= 17 && hour < 21) return 2;     
+        return 3;                                  
+    }
+
+    function updateBackground() {
+        const newTime = getTimeOfDay();
+        if (newTime !== currentTimeOfDay) {
+            currentTimeOfDay = newTime;
+            stage.style.backgroundImage = `url('${backgrounds[currentTimeOfDay]}')`;
+        }
+    }
+    setInterval(updateBackground, 30000);
+    updateBackground();
+
+    // 初期配置
     charas.forEach(c => {
         c.element.style.backgroundImage = `url('${c.imgNormal}')`;
         updatePosition(c);
+        makeDraggable(c); // ドラッグ・タップ処理を登録
     });
 
-    // 画面更新（奥行き対応）
+    // 位置とスケールの更新
     function updatePosition(c) {
         c.element.style.left = c.x + 'px';
         c.element.style.bottom = c.y + 'px';
 
-        // 奥行き：奥(y=160)に行くほど小さく(65%)、手前(y=40)ほど大きく(100%)
         const scaleFactor = 1 - ((c.y - 40) / 120) * 0.35;
         const scaleX = c.direction * scaleFactor;
         const scaleY = scaleFactor;
@@ -199,18 +245,16 @@
         c.element.style.setProperty('--base-scale-y', scaleY);
         c.element.style.transform = `scale(${scaleX}, ${scaleY})`;
         
-        // 前後関係をy座標で入れ替える
         c.element.style.zIndex = 20 - Math.floor(c.y / 10);
 
-        // 吹き出し追従
         c.bubble.style.left = (c.x + 5) + 'px';
         c.bubble.style.bottom = (c.y + 100 * scaleFactor) + 'px';
     }
 
-    // 縦横無尽にトコトコ歩く
+    // 縦横無尽ウォーキング
     function walk(charaIndex) {
         const c = charas[charaIndex];
-        if (c.isReacting) return;
+        if (c.isReacting || c.isSleeping) return;
 
         const newX = Math.floor(Math.random() * 215) + 15;
         const newY = Math.floor(Math.random() * 110) + 40; 
@@ -221,27 +265,25 @@
 
         updatePosition(c);
         
-        // たまにおしゃべりが発生するかチェック
-        if (Math.random() < 0.2) {
+        if (Math.random() < 0.15) {
             checkChat();
         }
 
         setTimeout(() => walk(charaIndex), Math.floor(Math.random() * 1800) + 1200);
     }
     
-    // 4人全員を時間差で出発させる
     charas.forEach((_, index) => {
         setTimeout(() => walk(index), index * 400);
     });
 
-    // おしゃべり発生チェック
+    // おしゃべりシステム
     function checkChat() {
         const i1 = Math.floor(Math.random() * 4);
         const i2 = (i1 + 1) % 4;
         const c1 = charas[i1];
         const c2 = charas[i2];
 
-        if (!c1.isReacting && !c2.isReacting) {
+        if (!c1.isReacting && !c2.isReacting && !c1.isSleeping && !c2.isSleeping) {
             const dist = Math.abs(c1.x - c2.x) + Math.abs(c1.y - c2.y);
             if (dist < 90) {
                 c1.isReacting = true;
@@ -254,13 +296,8 @@
                 updatePosition(c1);
                 updatePosition(c2);
 
-                c1.bubble.innerText = pair[0];
-                c1.bubble.style.display = 'block';
-
-                setTimeout(() => {
-                    c2.bubble.innerText = pair[1];
-                    c2.bubble.style.display = 'block';
-                }, 700);
+                showBubble(c1, pair[0]);
+                setTimeout(() => showBubble(c2, pair[1]), 700);
 
                 setTimeout(() => {
                     c1.bubble.style.display = 'none';
@@ -272,35 +309,132 @@
         }
     }
 
-    // タップリアクション
-    function tapChara(id) {
-        const c = charas.find(item => item.id === id);
-        if (c.isReacting) return;
-        c.isReacting = true;
-
-        c.element.style.backgroundImage = `url('${c.imgEat}')`;
-        c.element.classList.add('jump-animation');
-
-        setTimeout(() => {
-            c.element.classList.remove('jump-animation');
-            c.element.style.backgroundImage = `url('${c.imgNormal}')`;
-            c.isReacting = false;
-            updatePosition(c);
-        }, 400);
+    function showBubble(c, text) {
+        c.bubble.innerText = text;
+        c.bubble.style.display = 'block';
     }
 
-    // メニューを開閉する関数（表示をflexにして綺麗に並べます）
-    function toggleMenu() {
-        if (menuPopup.style.display === 'flex') {
-            menuPopup.style.display = 'none';
+    // === 2. ドラッグ＆スワイプで「きゃー！」システム ===
+    function makeDraggable(chara) {
+        let isDragging = false;
+        let startX, startY, startLeft, startBottom;
+
+        function dragStart(clientX, clientY) {
+            if (chara.isSleeping) return;
+            isDragging = true;
+            chara.isReacting = true;
+
+            chara.element.style.transition = 'none';
+            chara.bubble.style.transition = 'none';
+            
+            // きゃー顔に変身！
+            chara.element.style.backgroundImage = `url('${chara.imgKyaa}')`;
+
+            const rect = chara.element.getBoundingClientRect();
+            const stageRect = stage.getBoundingClientRect();
+
+            startX = clientX;
+            startY = clientY;
+            startLeft = rect.left - stageRect.left;
+            startBottom = stageRect.bottom - rect.bottom;
+        }
+
+        function dragMove(clientX, clientY) {
+            if (!isDragging) return;
+            const deltaX = clientX - startX;
+            const deltaY = clientY - startY;
+
+            let newLeft = startLeft + deltaX;
+            let newBottom = startBottom - deltaY;
+
+            // 枠からはみ出さない制限
+            chara.x = Math.max(0, Math.min(newLeft, 255));
+            chara.y = Math.max(10, Math.min(newBottom, 440));
+
+            updatePosition(chara);
+        }
+
+        function dragEnd() {
+            if (!isDragging) return;
+            isDragging = false;
+
+            // 元の滑らかな歩行スピードに戻す
+            chara.element.style.transition = 'left 1.5s ease-in-out, bottom 1.5s ease-in-out, transform 0.3s ease';
+            chara.bubble.style.transition = 'left 1.5s ease-in-out, bottom 1.5s ease-in-out';
+            
+            // 地面の高さ(40〜150px)に優しく着地させる
+            if (chara.y > 150) chara.y = 150;
+            if (chara.y < 40) chara.y = 40;
+
+            chara.element.style.backgroundImage = `url('${chara.imgNormal}')`;
+            chara.isReacting = false;
+            updatePosition(chara);
+
+            showBubble(chara, 'きゃー😵💕');
+            setTimeout(() => { if(!chara.isReacting) chara.bubble.style.display = 'none'; }, 1400);
+        }
+
+        // マウスイベント (PC用)
+        chara.element.addEventListener('mousedown', e => {
+            // 左クリックのみ（ダブルクリックでの睡眠を邪魔しない）
+            if(e.detail === 1) dragStart(e.clientX, e.clientY);
+        });
+        document.addEventListener('mousemove', e => { if (isDragging) dragMove(e.clientX, e.clientY); });
+        document.addEventListener('mouseup', dragEnd);
+
+        // タッチイベント (スマホ用)
+        chara.element.addEventListener('touchstart', e => {
+            dragStart(e.touches[0].clientX, e.touches[0].clientY);
+        });
+        document.addEventListener('touchmove', e => { if (isDragging) dragMove(e.touches[0].clientX, e.touches[0].clientY); });
+        document.addEventListener('touchend', dragEnd);
+
+        // クイックタップ/ダブルクリックで「なでなで睡眠」
+        chara.element.addEventListener('click', e => {
+            // ドラッグした時はカウントしない
+            tapChara(chara);
+        });
+    }
+
+    // === 3. タップでなでなで ➔ すやすや睡眠システム ===
+    function tapChara(c) {
+        if (c.isReacting || c.isSleeping) return;
+
+        c.petCount++;
+        
+        if (c.petCount >= 5) {
+            // 5回撫でるとすやすや眠る
+            c.isSleeping = true;
+            c.element.style.backgroundImage = `url('${c.imgSleep}')`;
+            c.element.classList.add('sleep');
+            showBubble(c, 'すぅ…すぅ…😪');
+            
+            // 8.5秒後に気持ちよく目が覚める
+            setTimeout(() => {
+                if (c.isSleeping) {
+                    c.isSleeping = false;
+                    c.petCount = 0;
+                    c.element.style.backgroundImage = `url('${c.imgNormal}')`;
+                    c.element.classList.remove('sleep');
+                    c.bubble.style.display = 'none';
+                    // 歩行を再起動
+                    walk(charas.indexOf(c));
+                }
+            }, 8500);
         } else {
-            menuPopup.style.display = 'flex';
+            // 撫でられている途中の可愛いセリフ
+            showBubble(c, c.petCount >= 3 ? 'んぅ…ねむいぃ…♡' : 'んっ…♡');
+            setTimeout(() => { if(!c.isSleeping && !c.isReacting) c.bubble.style.display = 'none'; }, 900);
         }
     }
 
-    // ✨ ごはんをあげる関数（歩行再開ロジック追加版）
+    // ごはんメニュー
+    function toggleMenu() {
+        menuPopup.style.display = (menuPopup.style.display === 'flex') ? 'none' : 'flex';
+    }
+
     function giveFood(imgFile) {
-        if (charas.some(c => c.isReacting)) return;
+        if (charas.some(c => c.isReacting || c.isSleeping)) return;
         menuPopup.style.display = 'none';
 
         snack.style.backgroundImage = `url('${imgFile}')`;
@@ -321,22 +455,20 @@
             updatePosition(c);
         });
 
-        // 机の前に到着 → もぐもぐ
         setTimeout(() => {
             charas.forEach(c => {
                 c.element.style.backgroundImage = `url('${c.imgEat}')`;
             });
             snack.style.display = 'none';
 
-            // 食事終了 → 通常に戻して再び歩き始める
             setTimeout(() => {
                 charas.forEach(c => {
                     c.element.style.backgroundImage = `url('${c.imgNormal}')`;
                     c.isReacting = false;
-                    updatePosition(c);   // 位置を最新状態に更新
+                    updatePosition(c);   
                 });
                 
-                // ★★★ ここで全員の歩行を再起動！ ★★★
+                // 全員のウロウロを再起動
                 charas.forEach((_, index) => {
                     setTimeout(() => walk(index), 300 + index * 200);
                 });
@@ -347,4 +479,3 @@
 
 </body>
 </html>
-
