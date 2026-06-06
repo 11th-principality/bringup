@@ -329,6 +329,8 @@ function sleepChara(c) {
         c.isReacting = false;
         setTimeout(() => {
             if (!c.isSleeping) return;
+            // 夜モード中はそのまま寝かせておく
+            if (currentTimeOfDay === 3) return;
             c.isSleeping = false;
             c.element.style.backgroundImage = `url('${c.imgNormal}')`;
             c.element.classList.remove('sleep');
