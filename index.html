@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>海の見える部屋のよにん - フルシステム版</title>
+    <title>海の見える部屋のよにん</title>
     <style>
         body {
             display: flex;
@@ -15,7 +15,6 @@
             margin: 0;
         }
 
-        /* ゲームの舞台 */
         .stage-container {
             width: 350px;
             height: 550px;
@@ -27,10 +26,9 @@
             position: relative;
             overflow: hidden;
             border: 6px solid #fff;
-            transition: background-image 2.5s ease; /* 時間変化のフェード演出 */
+            transition: background-image 2.5s ease;
         }
 
-        /* キャラクター共通設定 */
         .character {
             width: 95px; 
             height: 95px;
@@ -38,7 +36,7 @@
             background-repeat: no-repeat;
             background-position: bottom center;
             position: absolute;
-            transition: left 1.5s ease-in-out, bottom 1.5s ease-in-out, transform 0.3s ease;
+            /* transitionはJSで動的に切り替え */
             cursor: grab;
             user-select: none;
             z-index: 10;
@@ -47,7 +45,6 @@
             cursor: grabbing;
         }
 
-        /* すやすや眠っている時のZzzエフェクト */
         @keyframes sleepZzz {
             0% { opacity: 0; transform: translateY(0) scale(0.6); }
             50% { opacity: 1; }
@@ -62,7 +59,6 @@
             animation: sleepZzz 2s infinite ease-in-out;
         }
 
-        /* おしゃべり・リアクション中の吹き出し */
         .speech-bubble {
             position: absolute;
             background: white;
@@ -75,7 +71,7 @@
             display: none;
             z-index: 30;
             white-space: nowrap;
-            transition: left 1.5s ease-in-out, bottom 1.5s ease-in-out;
+            pointer-events: none;
         }
         .speech-bubble::after {
             content: '';
@@ -90,17 +86,15 @@
             width: 0;
         }
 
-        /* ジャンプアニメーション */
         @keyframes jump {
-            0% { transform: translate(0, 0) scale(var(--base-scale-x), var(--base-scale-y)); }
-            50% { transform: translate(0, -25px) scale(var(--base-scale-x), var(--base-scale-y)); }
-            100% { transform: translate(0, 0) scale(var(--base-scale-x), var(--base-scale-y)); }
+            0%   { margin-bottom: 0px; }
+            40%  { margin-bottom: 22px; }
+            100% { margin-bottom: 0px; }
         }
         .jump-animation {
             animation: jump 0.4s ease;
         }
 
-        /* ごちそう（机の上にぴったり配置） */
         .snack {
             width: 45px;
             height: 45px;
@@ -113,7 +107,6 @@
             z-index: 15;
         }
 
-        /* 操作パネル */
         .controls {
             position: absolute;
             bottom: 15px;
@@ -125,7 +118,6 @@
             z-index: 40;
         }
 
-        /* ごはん選択メニュー */
         .menu-popup {
             display: none;
             background: rgba(255, 255, 255, 0.95);
@@ -150,6 +142,19 @@
             background-color: #00796b;
             color: white;
         }
+
+        /* ハート演出 */
+        @keyframes floatHeart {
+            0%   { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-50px) scale(1.4); }
+        }
+        .float-heart {
+            position: absolute;
+            font-size: 20px;
+            pointer-events: none;
+            z-index: 50;
+            animation: floatHeart 1.2s ease-out forwards;
+        }
     </style>
 </head>
 <body>
@@ -170,7 +175,7 @@
     <div class="controls">
         <div id="menuPopup" class="menu-popup">
             <button onclick="giveFood('snack.png')">🍩 ドーナツ</button>
-            <button onclick="giveFood('parfait.png')"> 🍨パフェ</button>
+            <button onclick="giveFood('parfait.png')">🍨 パフェ</button>
             <button onclick="giveFood('food_meat.png')">🍖 ほねつき肉</button>
             <button onclick="giveFood('food_omurice.png')">🍳 オムライス</button>
         </div>
@@ -183,131 +188,91 @@
     const snack = document.getElementById('snack');
     const menuPopup = document.getElementById('menuPopup');
 
-    // === 1. 好感度・状態・時間管理データ ===
-    let currentTimeOfDay = -1; 
+    // ── 時間帯 ──────────────────────────────────────────
+    let currentTimeOfDay = -1;
     const backgrounds = {
-        0: 'background_morning.png',   // 朝 5:00〜10:59
-        1: 'background_day.png',       // 昼 11:00〜16:59
-        2: 'background_evening.png',   // 夕 17:00〜20:59
-        3: 'background_night.png'      // 夜 21:00〜4:59
+        0: 'background_morning.png',
+        1: 'background_day.png',
+        2: 'background_evening.png',
+        3: 'background_night.png'
     };
 
-    const charas = [
-        { id: 1, element: document.getElementById('chara1'), bubble: document.getElementById('bubble1'), imgNormal: 'chara_normal.png', imgEat: 'chara_eat.png', imgSleep: 'chara1_sleep.png', imgKyaa: 'chara1_kyaa.png', x: 40, y: 60, direction: 1, isReacting: false, isSleeping: false, petCount: 0 },
-        { id: 2, element: document.getElementById('chara2'), bubble: document.getElementById('bubble2'), imgNormal: 'chara_island.png', imgEat: 'chara_island_eat.png', imgSleep: 'chara2_sleep.png', imgKyaa: 'chara2_kyaa.png', x: 120, y: 110, direction: 1, isReacting: false, isSleeping: false, petCount: 0 },
-        { id: 3, element: document.getElementById('chara3'), bubble: document.getElementById('bubble3'), imgNormal: 'chara_death.png', imgEat: 'chara_death_eat.png', imgSleep: 'chara3_sleep.png', imgKyaa: 'chara3_kyaa.png', x: 200, y: 70, direction: 1, isReacting: false, isSleeping: false, petCount: 0 },
-        { id: 4, element: document.getElementById('chara4'), bubble: document.getElementById('bubble4'), imgNormal: 'chara_priest.png', imgEat: 'chara_priest_eat.png', imgSleep: 'chara4_sleep.png', imgKyaa: 'chara4_kyaa.png', x: 260, y: 120, direction: 1, isReacting: false, isSleeping: false, petCount: 0 }
-    ];
-
-    const chatPhrases = [
-        ["🫧", "🌱"],
-        ["☀️", "🌟"],
-        ["🌊", "🌈"],
-        ["🌸", "🍀"],
-        ["🌻", "💐"]
-    ];
-
-    // 背景時間更新
     function getTimeOfDay() {
-        const hour = new Date().getHours();
-        if (hour >= 5 && hour < 11) return 0;      
-        if (hour >= 11 && hour < 17) return 1;     
-        if (hour >= 17 && hour < 21) return 2;     
-        return 3;                                  
+        const h = new Date().getHours();
+        if (h >= 5  && h < 11) return 0;
+        if (h >= 11 && h < 17) return 1;
+        if (h >= 17 && h < 21) return 2;
+        return 3;
     }
-
     function updateBackground() {
-        const newTime = getTimeOfDay();
-        if (newTime !== currentTimeOfDay) {
-            currentTimeOfDay = newTime;
-            stage.style.backgroundImage = `url('${backgrounds[currentTimeOfDay]}')`;
+        const t = getTimeOfDay();
+        if (t !== currentTimeOfDay) {
+            currentTimeOfDay = t;
+            stage.style.backgroundImage = `url('${backgrounds[t]}')`;
         }
     }
     setInterval(updateBackground, 30000);
     updateBackground();
 
-    // 初期配置
-    charas.forEach(c => {
-        c.element.style.backgroundImage = `url('${c.imgNormal}')`;
-        updatePosition(c);
-        makeDraggable(c); // ドラッグ・タップ処理を登録
-    });
+    // ── キャラクター定義 ─────────────────────────────────
+    const charas = [
+        { id:1, element:document.getElementById('chara1'), bubble:document.getElementById('bubble1'),
+          imgNormal:'chara_normal.png',  imgEat:'chara_eat.png',         imgSleep:'chara1_sleep.png', imgKyaa:'chara1_kyaa.png',
+          x:40,  y:60,  direction:1, isReacting:false, isSleeping:false, isDragging:false, petCount:0, walkTimer:null },
+        { id:2, element:document.getElementById('chara2'), bubble:document.getElementById('bubble2'),
+          imgNormal:'chara_island.png',  imgEat:'chara_island_eat.png',  imgSleep:'chara2_sleep.png', imgKyaa:'chara2_kyaa.png',
+          x:120, y:110, direction:1, isReacting:false, isSleeping:false, isDragging:false, petCount:0, walkTimer:null },
+        { id:3, element:document.getElementById('chara3'), bubble:document.getElementById('bubble3'),
+          imgNormal:'chara_death.png',   imgEat:'chara_death_eat.png',   imgSleep:'chara3_sleep.png', imgKyaa:'chara3_kyaa.png',
+          x:200, y:70,  direction:1, isReacting:false, isSleeping:false, isDragging:false, petCount:0, walkTimer:null },
+        { id:4, element:document.getElementById('chara4'), bubble:document.getElementById('bubble4'),
+          imgNormal:'chara_priest.png',  imgEat:'chara_priest_eat.png',  imgSleep:'chara4_sleep.png', imgKyaa:'chara4_kyaa.png',
+          x:260, y:120, direction:1, isReacting:false, isSleeping:false, isDragging:false, petCount:0, walkTimer:null }
+    ];
 
-    // 位置とスケールの更新
-    function updatePosition(c) {
-        c.element.style.left = c.x + 'px';
+    const chatPhrases = [
+        ["🫧","🌱"], ["☀️","🌟"], ["🌊","🌈"], ["🌸","🍀"], ["🌻","💐"]
+    ];
+
+    // ── 描画ユーティリティ ───────────────────────────────
+
+    /**
+     * キャラの位置・スケールを更新する。
+     * @param {object} c        キャラオブジェクト
+     * @param {boolean} animate true=スムーズ移動, false=瞬間移動（ドラッグ中）
+     */
+    function updatePosition(c, animate) {
+        // ドラッグ中はtransitionなし、それ以外はスムーズに
+        c.element.style.transition = animate
+            ? 'left 1.5s ease-in-out, bottom 1.5s ease-in-out, transform 0.3s ease'
+            : 'none';
+        c.bubble.style.transition = animate
+            ? 'left 1.5s ease-in-out, bottom 1.5s ease-in-out'
+            : 'none';
+
+        c.element.style.left   = c.x + 'px';
         c.element.style.bottom = c.y + 'px';
 
-        const scaleFactor = 1 - ((c.y - 40) / 120) * 0.35;
+        // ── スケール ──
+        // ドラッグ中は固定スケール(1.0)でサイズ変化なし
+        let scaleFactor;
+        if (c.isDragging) {
+            scaleFactor = 1.0;
+        } else {
+            // y=40→scale 1.0、y=150→scale 0.65（奥に行くほど小さく）
+            scaleFactor = 1 - Math.max(0, Math.min(c.y - 40, 110)) / 110 * 0.35;
+        }
+
         const scaleX = c.direction * scaleFactor;
         const scaleY = scaleFactor;
-
         c.element.style.setProperty('--base-scale-x', scaleX);
         c.element.style.setProperty('--base-scale-y', scaleY);
         c.element.style.transform = `scale(${scaleX}, ${scaleY})`;
-        
-        c.element.style.zIndex = 20 - Math.floor(c.y / 10);
+        c.element.style.zIndex    = 20 - Math.floor(c.y / 10);
 
-        c.bubble.style.left = (c.x + 5) + 'px';
-        c.bubble.style.bottom = (c.y + 100 * scaleFactor) + 'px';
-    }
-
-    // 縦横無尽ウォーキング
-    function walk(charaIndex) {
-        const c = charas[charaIndex];
-        if (c.isReacting || c.isSleeping) return;
-
-        const newX = Math.floor(Math.random() * 215) + 15;
-        const newY = Math.floor(Math.random() * 110) + 40; 
-        
-        c.direction = (newX < c.x) ? 1 : -1;
-        c.x = newX;
-        c.y = newY;
-
-        updatePosition(c);
-        
-        if (Math.random() < 0.15) {
-            checkChat();
-        }
-
-        setTimeout(() => walk(charaIndex), Math.floor(Math.random() * 1800) + 1200);
-    }
-    
-    charas.forEach((_, index) => {
-        setTimeout(() => walk(index), index * 400);
-    });
-
-    // おしゃべりシステム
-    function checkChat() {
-        const i1 = Math.floor(Math.random() * 4);
-        const i2 = (i1 + 1) % 4;
-        const c1 = charas[i1];
-        const c2 = charas[i2];
-
-        if (!c1.isReacting && !c2.isReacting && !c1.isSleeping && !c2.isSleeping) {
-            const dist = Math.abs(c1.x - c2.x) + Math.abs(c1.y - c2.y);
-            if (dist < 90) {
-                c1.isReacting = true;
-                c2.isReacting = true;
-
-                const pair = chatPhrases[Math.floor(Math.random() * chatPhrases.length)];
-                
-                c1.direction = (c1.x < c2.x) ? -1 : 1;
-                c2.direction = (c2.x < c1.x) ? -1 : 1;
-                updatePosition(c1);
-                updatePosition(c2);
-
-                showBubble(c1, pair[0]);
-                setTimeout(() => showBubble(c2, pair[1]), 700);
-
-                setTimeout(() => {
-                    c1.bubble.style.display = 'none';
-                    c2.bubble.style.display = 'none';
-                    c1.isReacting = false;
-                    c2.isReacting = false;
-                }, 2600);
-            }
-        }
+        // 吹き出し位置（スケールに合わせて少し上に）
+        c.bubble.style.left   = (c.x + 5) + 'px';
+        c.bubble.style.bottom = (c.y + 90 * scaleFactor) + 'px';
     }
 
     function showBubble(c, text) {
@@ -315,121 +280,197 @@
         c.bubble.style.display = 'block';
     }
 
-    // === 2. ドラッグ＆スワイプで「きゃー！」システム ===
-    function makeDraggable(chara) {
-        let isDragging = false;
-        let startX, startY, startLeft, startBottom;
+    // ── 歩行システム ──────────────────────────────────────
+    // タイマーを管理し、停止→再起動を確実に行う
 
-        function dragStart(clientX, clientY) {
+    function scheduleWalk(c) {
+        // すでに予約済みなら上書きしない
+        if (c.walkTimer) return;
+        c.walkTimer = setTimeout(() => {
+            c.walkTimer = null;
+            doWalk(c);
+        }, Math.floor(Math.random() * 1800) + 1200);
+    }
+
+    function doWalk(c) {
+        // 何らかのアクション中は少し待って再試行
+        if (c.isReacting || c.isSleeping || c.isDragging) {
+            scheduleWalk(c);
+            return;
+        }
+
+        const newX = Math.floor(Math.random() * 215) + 15;
+        const newY = Math.floor(Math.random() * 110) + 40;
+        c.direction = (newX < c.x) ? 1 : -1;
+        c.x = newX;
+        c.y = newY;
+        updatePosition(c, true);
+
+        if (Math.random() < 0.15) checkChat();
+
+        scheduleWalk(c);
+    }
+
+    // 初期化＆起動
+    charas.forEach(c => {
+        c.element.style.backgroundImage = `url('${c.imgNormal}')`;
+        updatePosition(c, false);
+        makeDraggable(c);
+        scheduleWalk(c);
+    });
+
+    // ── おしゃべりシステム ───────────────────────────────
+    function checkChat() {
+        const i1 = Math.floor(Math.random() * 4);
+        const i2 = (i1 + 1) % 4;
+        const c1 = charas[i1], c2 = charas[i2];
+        if (c1.isReacting || c2.isReacting || c1.isSleeping || c2.isSleeping) return;
+
+        const dist = Math.abs(c1.x - c2.x) + Math.abs(c1.y - c2.y);
+        if (dist >= 90) return;
+
+        c1.isReacting = c2.isReacting = true;
+        c1.direction = (c1.x < c2.x) ? -1 : 1;
+        c2.direction = (c2.x < c1.x) ? -1 : 1;
+        updatePosition(c1, true);
+        updatePosition(c2, true);
+
+        const pair = chatPhrases[Math.floor(Math.random() * chatPhrases.length)];
+        showBubble(c1, pair[0]);
+        setTimeout(() => showBubble(c2, pair[1]), 700);
+
+        setTimeout(() => {
+            c1.bubble.style.display = c2.bubble.style.display = 'none';
+            c1.isReacting = c2.isReacting = false;
+            // 会話が終わったら歩行を再スケジュール
+            scheduleWalk(c1);
+            scheduleWalk(c2);
+        }, 2600);
+    }
+
+    // ── ドラッグシステム ─────────────────────────────────
+    function makeDraggable(chara) {
+        let dragging = false;
+        let startClientX, startClientY, startCharaX, startCharaY;
+
+        function onDragStart(clientX, clientY) {
             if (chara.isSleeping) return;
-            isDragging = true;
+            dragging = true;
+            chara.isDragging = true;
             chara.isReacting = true;
 
-            chara.element.style.transition = 'none';
-            chara.bubble.style.transition = 'none';
-            
-            // きゃー顔に変身！
+            // タイマーをクリアして歩行を止める
+            if (chara.walkTimer) {
+                clearTimeout(chara.walkTimer);
+                chara.walkTimer = null;
+            }
+
+            startClientX = clientX;
+            startClientY = clientY;
+            startCharaX  = chara.x;
+            startCharaY  = chara.y;
+
             chara.element.style.backgroundImage = `url('${chara.imgKyaa}')`;
+            updatePosition(chara, false);
+        }
 
-            const rect = chara.element.getBoundingClientRect();
+        function onDragMove(clientX, clientY) {
+            if (!dragging) return;
             const stageRect = stage.getBoundingClientRect();
+            // stage内のスケールを考慮しないシンプルな座標変換
+            const dx = clientX - startClientX;
+            const dy = clientY - startClientY;
 
-            startX = clientX;
-            startY = clientY;
-            startLeft = rect.left - stageRect.left;
-            startBottom = stageRect.bottom - rect.bottom;
+            chara.x = Math.max(0, Math.min(startCharaX + dx, 255));
+            chara.y = Math.max(10, Math.min(startCharaY - dy, 440));
+            updatePosition(chara, false);  // ← animate=false でスケール固定
         }
 
-        function dragMove(clientX, clientY) {
-            if (!isDragging) return;
-            const deltaX = clientX - startX;
-            const deltaY = clientY - startY;
+        function onDragEnd() {
+            if (!dragging) return;
+            dragging = false;
+            chara.isDragging = false;
 
-            let newLeft = startLeft + deltaX;
-            let newBottom = startBottom - deltaY;
-
-            // 枠からはみ出さない制限
-            chara.x = Math.max(0, Math.min(newLeft, 255));
-            chara.y = Math.max(10, Math.min(newBottom, 440));
-
-            updatePosition(chara);
-        }
-
-        function dragEnd() {
-            if (!isDragging) return;
-            isDragging = false;
-
-            // 元の滑らかな歩行スピードに戻す
-            chara.element.style.transition = 'left 1.5s ease-in-out, bottom 1.5s ease-in-out, transform 0.3s ease';
-            chara.bubble.style.transition = 'left 1.5s ease-in-out, bottom 1.5s ease-in-out';
-            
-            // 地面の高さ(40〜150px)に優しく着地させる
+            // 地面の範囲に着地
             if (chara.y > 150) chara.y = 150;
-            if (chara.y < 40) chara.y = 40;
+            if (chara.y < 40)  chara.y = 40;
 
             chara.element.style.backgroundImage = `url('${chara.imgNormal}')`;
             chara.isReacting = false;
-            updatePosition(chara);
+            updatePosition(chara, true);  // ← animate=true でスムーズ着地
 
             showBubble(chara, 'きゃー😵💕');
-            setTimeout(() => { if(!chara.isReacting) chara.bubble.style.display = 'none'; }, 1400);
+            setTimeout(() => {
+                if (!chara.isReacting) chara.bubble.style.display = 'none';
+            }, 1400);
+
+            // 歩行を再開
+            scheduleWalk(chara);
         }
 
-        // マウスイベント (PC用)
+        // PC
         chara.element.addEventListener('mousedown', e => {
-            // 左クリックのみ（ダブルクリックでの睡眠を邪魔しない）
-            if(e.detail === 1) dragStart(e.clientX, e.clientY);
+            if (e.button !== 0) return;
+            e.preventDefault();
+            onDragStart(e.clientX, e.clientY);
         });
-        document.addEventListener('mousemove', e => { if (isDragging) dragMove(e.clientX, e.clientY); });
-        document.addEventListener('mouseup', dragEnd);
+        document.addEventListener('mousemove', e => { if (dragging) onDragMove(e.clientX, e.clientY); });
+        document.addEventListener('mouseup',   e => { if (dragging) onDragEnd(); });
 
-        // タッチイベント (スマホ用)
+        // スマホ
         chara.element.addEventListener('touchstart', e => {
-            dragStart(e.touches[0].clientX, e.touches[0].clientY);
-        });
-        document.addEventListener('touchmove', e => { if (isDragging) dragMove(e.touches[0].clientX, e.touches[0].clientY); });
-        document.addEventListener('touchend', dragEnd);
+            e.preventDefault();
+            onDragStart(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: false });
+        document.addEventListener('touchmove', e => {
+            if (dragging) { e.preventDefault(); onDragMove(e.touches[0].clientX, e.touches[0].clientY); }
+        }, { passive: false });
+        document.addEventListener('touchend', () => { if (dragging) onDragEnd(); });
 
-        // クイックタップ/ダブルクリックで「なでなで睡眠」
-        chara.element.addEventListener('click', e => {
-            // ドラッグした時はカウントしない
-            tapChara(chara);
-        });
+        // タップ（なでなで）
+        chara.element.addEventListener('click', () => tapChara(chara));
     }
 
-    // === 3. タップでなでなで ➔ すやすや睡眠システム ===
-    function tapChara(c) {
-        if (c.isReacting || c.isSleeping) return;
+    // ── なでなで→ねんね ─────────────────────────────────
+    function spawnHeart(c) {
+        const heart = document.createElement('div');
+        heart.className = 'float-heart';
+        heart.textContent = ['💖','💕','💗','💓'][Math.floor(Math.random() * 4)];
+        heart.style.left   = (c.x + 20 + Math.random() * 40) + 'px';
+        heart.style.bottom = (c.y + 80) + 'px';
+        stage.appendChild(heart);
+        setTimeout(() => heart.remove(), 1200);
+    }
 
+    function tapChara(c) {
+        if (c.isReacting || c.isSleeping || c.isDragging) return;
         c.petCount++;
-        
+        spawnHeart(c);
+
         if (c.petCount >= 5) {
-            // 5回撫でるとすやすや眠る
             c.isSleeping = true;
             c.element.style.backgroundImage = `url('${c.imgSleep}')`;
             c.element.classList.add('sleep');
             showBubble(c, 'すぅ…すぅ…😪');
-            
-            // 8.5秒後に気持ちよく目が覚める
+
             setTimeout(() => {
-                if (c.isSleeping) {
-                    c.isSleeping = false;
-                    c.petCount = 0;
-                    c.element.style.backgroundImage = `url('${c.imgNormal}')`;
-                    c.element.classList.remove('sleep');
-                    c.bubble.style.display = 'none';
-                    // 歩行を再起動
-                    walk(charas.indexOf(c));
-                }
+                if (!c.isSleeping) return;
+                c.isSleeping = false;
+                c.petCount   = 0;
+                c.element.style.backgroundImage = `url('${c.imgNormal}')`;
+                c.element.classList.remove('sleep');
+                c.bubble.style.display = 'none';
+                scheduleWalk(c);  // ← 起床後に歩行再起動
             }, 8500);
         } else {
-            // 撫でられている途中の可愛いセリフ
             showBubble(c, c.petCount >= 3 ? '💕' : '💖');
-            setTimeout(() => { if(!c.isSleeping && !c.isReacting) c.bubble.style.display = 'none'; }, 900);
+            setTimeout(() => {
+                if (!c.isSleeping && !c.isReacting) c.bubble.style.display = 'none';
+            }, 900);
         }
     }
 
-    // ごはんメニュー
+    // ── ごはんシステム ───────────────────────────────────
     function toggleMenu() {
         menuPopup.style.display = (menuPopup.style.display === 'flex') ? 'none' : 'flex';
     }
@@ -438,22 +479,26 @@
         if (charas.some(c => c.isReacting || c.isSleeping)) return;
         menuPopup.style.display = 'none';
 
+        // 全員の歩行タイマーを止める
+        charas.forEach(c => {
+            if (c.walkTimer) { clearTimeout(c.walkTimer); c.walkTimer = null; }
+            c.isReacting = true;
+        });
+
         snack.style.backgroundImage = `url('${imgFile}')`;
         snack.style.display = 'block';
 
         const targets = [
-            { x: 100, y: 120, dir: -1 },
-            { x: 140, y: 100, dir: -1 },
-            { x: 170, y: 120, dir: 1 },
-            { x: 210, y: 100, dir: 1 }
+            { x:100, y:120, dir:-1 },
+            { x:140, y:100, dir:-1 },
+            { x:170, y:120, dir: 1 },
+            { x:210, y:100, dir: 1 }
         ];
-
-        charas.forEach((c, idx) => {
-            c.isReacting = true;
-            c.x = targets[idx].x;
-            c.y = targets[idx].y;
-            c.direction = targets[idx].dir;
-            updatePosition(c);
+        charas.forEach((c, i) => {
+            c.x = targets[i].x;
+            c.y = targets[i].y;
+            c.direction = targets[i].dir;
+            updatePosition(c, true);
         });
 
         setTimeout(() => {
@@ -466,12 +511,8 @@
                 charas.forEach(c => {
                     c.element.style.backgroundImage = `url('${c.imgNormal}')`;
                     c.isReacting = false;
-                    updatePosition(c);   
-                });
-                
-                // 全員のウロウロを再起動
-                charas.forEach((_, index) => {
-                    setTimeout(() => walk(index), 300 + index * 200);
+                    updatePosition(c, true);
+                    scheduleWalk(c);  // ← 食後に歩行再起動
                 });
             }, 1500);
         }, 1600);
