@@ -237,7 +237,7 @@ function updatePosition(c, animate) {
 
     // ★ scaleXだけ方向を掛ける。transformはscaleのみ（bottomで高さ管理するためtranslateYを使わない）
     c.element.style.transform = `scaleX(${c.direction * scaleFactor}) scaleY(${scaleFactor})`;
-    c.element.style.zIndex    = 20 - Math.floor(c.y / 10);
+    c.element.style.zIndex = Math.max(1, 20 - Math.floor(c.y / 10));
 
     c.bubble.style.left   = (c.x + 5) + 'px';
     c.bubble.style.bottom = (c.y + 90 * scaleFactor) + 'px';
