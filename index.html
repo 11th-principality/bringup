@@ -207,7 +207,7 @@ const charas = [
       x:120, y:110, direction:1, isReacting:false, isSleeping:false, isDragging:false, petCount:0, walkTimer:null },
     { id:3, element:document.getElementById('chara3'), bubble:document.getElementById('bubble3'),
       imgNormal:'chara_death.png',   imgEat:'chara_death_eat.png',  imgSleep:'chara3_sleep.png', imgKyaa:'chara3_kyaa.png',
-      x:200, y:70,  direction:1, isReacting:false, isSleeping:false, isDragging:false, petCount:0, walkTimer:null },
+      x:200, y:70,  direction:1, isReacting:false, isSleeping:false, isDragging:false, petCount:0, walkTimer:null , maxY:320},
     { id:4, element:document.getElementById('chara4'), bubble:document.getElementById('bubble4'),
       imgNormal:'chara_priest.png',  imgEat:'chara_priest_eat.png', imgSleep:'chara4_sleep.png', imgKyaa:'chara4_kyaa.png',
       x:260, y:120, direction:1, isReacting:false, isSleeping:false, isDragging:false, petCount:0, walkTimer:null }
@@ -263,7 +263,8 @@ function doWalk(c) {
         return;
     }
     const newX = Math.floor(Math.random() * 215) + 15;
-    const newY = Math.floor(Math.random() * 110) + 40;
+      const top = c.maxY ?? 150;
+    const newY = Math.floor(Math.random() * (top - 40)) + 40;
     c.direction = (newX < c.x) ? 1 : -1;
     c.x = newX;
     c.y = newY;
