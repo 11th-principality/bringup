@@ -154,23 +154,24 @@
 
     <div id="snack" class="snack"></div>
 
+    <!-- 🔊 音声ファイル（新しいファイル名に更新） -->
     <audio id="bgm" loop>
-        <source src="bgm_cute_ocean.mp3" type="audio/mpeg">
+        <source src="umi.mp3" type="audio/mpeg">
     </audio>
     <audio id="eatSound">
-        <source src="munch_munch.mp3" type="audio/mpeg">
+        <source src="tabe.mp3" type="audio/mpeg">
     </audio>
     <audio id="petSound">
         <source src="pet_nya.mp3" type="audio/mpeg">
     </audio>
     <audio id="dragSound">
-        <source src="kyaa_cute.mp3" type="audio/mpeg">
+        <source src="sound_drag.mp3" type="audio/mpeg">
     </audio>
     <audio id="dropSound">
-        <source src="land_sound.mp3" type="audio/mpeg">
+        <source src="sound_drop.mp3" type="audio/mpeg">
     </audio>
     <audio id="chatSound">
-        <source src="chat_sound.mp3" type="audio/mpeg">
+        <source src="sound_chat.mp3" type="audio/mpeg">
     </audio>
 
     <div class="controls">
@@ -198,15 +199,12 @@ const chatSound = document.getElementById('chatSound');
 
 const allSEs = [eatSound, petSound, dragSound, dropSound, chatSound];
 
-// 💡 修正点：イベントを横取りしない「安全な」オーディオ解放処理
 let audioUnlocked = false;
 function unlockAudio() {
     if (audioUnlocked) return;
     
-    // BGMの再生
     bgm.play().catch(e => console.log("BGM再生待ち:", e));
     
-    // すべてのSEを無音で一瞬だけ再生してロック解除
     allSEs.forEach(audio => {
         audio.play().then(() => {
             audio.pause();
@@ -217,10 +215,9 @@ function unlockAudio() {
     audioUnlocked = true;
 }
 
-// 効果音再生用のヘルパー
 function playSE(audioEl) {
     if (!audioEl) return;
-    unlockAudio(); // 音を鳴らす直前にも念のためロック解除を走らせる
+    unlockAudio();
     audioEl.currentTime = 0;
     audioEl.play().catch(e => console.log("SE再生エラー:", e));
 }
@@ -416,7 +413,7 @@ function makeDraggable(chara) {
     let longPressTimer = null;
 
     function onDragStart(clientX, clientY) {
-        unlockAudio(); // 💡 触った瞬間に音のロックを解除する
+        unlockAudio();
         
         if (chara.isSleeping && currentTimeOfDay === 3) {
             tapChara(chara);
@@ -493,7 +490,6 @@ function makeDraggable(chara) {
             scheduleWalk(chara);
 
         } else {
-            // 💡 移動がなかった場合は純粋なタップとして処理
             chara.isDragging = false;
             chara.isReacting = false;
             chara.element.style.backgroundImage = `url('${chara.imgNormal}')`;
@@ -557,7 +553,6 @@ function tapChara(c) {
     if (c.isReacting || c.isSleeping || c.isDragging) return;
     c.isReacting = true;
     
-    // 🔊 撫でたときの音
     playSE(petSound);
 
     spawnHeart(c);
