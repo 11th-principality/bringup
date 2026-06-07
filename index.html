@@ -154,17 +154,25 @@
 
     <div id="snack" class="snack"></div>
 
+    <!-- オーディオ要素一覧 -->
     <audio id="umi.mp3" loop>
         <source src="bgm_cute_ocean.mp3" type="audio/mpeg">
     </audio>
-    <audio id="eatSound">
+    <audio id="tabe.mp3">
         <source src="munch_munch.mp3" type="audio/mpeg">
     </audio>
-    <audio id="petSound">
+    <audio id="nade.mp3">
         <source src="pet_nya.mp3" type="audio/mpeg">
     </audio>
-    <audio id="kyaaSound">
+    <audio id="sound_drag.mp3">
         <source src="kyaa_cute.mp3" type="audio/mpeg">
+    </audio>
+    <!-- ✨ 追加：着地音とおしゃべり音用のタグ -->
+    <audio id="sound_drop.mp3">
+        <source src="land_sound.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="chatSound">
+        <source src="chat_sound.mp3" type="audio/mpeg">
     </audio>
 
     <div class="controls">
@@ -182,6 +190,31 @@
 const stage    = document.getElementById('stage');
 const snackEl  = document.getElementById('snack');
 const menuPopup= document.getElementById('menuPopup');
+
+// オーディオ要素の取得
+const bgm       = document.getElementById('umi.mp3');
+const eatSound  = document.getElementById('eatSound');
+const petSound  = document.getElementById('petSound');
+const kyaaSound = document.getElementById('kyaaSound');
+const landSound = document.getElementById('landSound');
+const chatSound = document.getElementById('chatSound');
+
+// 💡 ユーザーの初操作でBGMを再生するシステム（ブラウザの自動再生制限対策）
+let bgmStarted = false;
+function tryPlayBGM() {
+    if (!bgmStarted) {
+        bgm.play().catch(e => console.log("BGM再生待ち:", e));
+        bgmStarted = true;
+    }
+}
+document.addEventListener('click', tryPlayBGM, { once: false });
+document.addEventListener('touchstart', tryPlayBGM, { once: false });
+
+// 効果音再生用のヘルパー（連続で叩かれても音が重なるようにリセットをかける）
+function playSE(audioEl) {
+    audioEl.currentTime = 0;
+    audioEl.play().catch(e => console.log("SE再生エラー:", e));
+}
 
 // ── 時間帯 ──────────────────────────────────────────────
 let currentTimeOfDay = -1;
@@ -222,7 +255,7 @@ const charas = [
       x:120, y:110, direction:1, isReacting:false, isSleeping:false, isDragging:false, petCount:0, walkTimer:null, maxY:150 },
     { id:3, element:document.getElementById('chara3'), bubble:document.getElementById('bubble3'),
       imgNormal:'chara_death.png',   imgEat:'chara_death_eat.png',  imgSleep:'chara3_sleep.png', imgKyaa:'chara3_kyaa.png',
-      x:200, y:70,  direction:1, isReacting:false, isSleeping:false, isDragging:false, petCount:0, walkTimer:null, maxY:220 }, // ✨死神さんは高め
+      x:200, y:70,  direction:1, isReacting:false, isSleeping:false, isDragging:false, petCount:0, walkTimer:null, maxY:220 },
     { id:4, element:document.getElementById('chara4'), bubble:document.getElementById('bubble4'),
       imgNormal:'chara_priest.png',  imgEat:'chara_priest_eat.png', imgSleep:'chara4_sleep.png', imgKyaa:'chara4_kyaa.png',
       x:260, y:120, direction:1, isReacting:false, isSleeping:false, isDragging:false, petCount:0, walkTimer:null, maxY:150 }
@@ -280,7 +313,7 @@ function doWalk(c) {
     const newX = Math.floor(Math.random() * 215) + 15;
     let newY = Math.floor(Math.random() * 110) + 40; 
     if (c.id === 3) {
-        newY = Math.floor(Math.random() * 120) + 100; // ✨ 死神さん専用移動範囲 (100〜220)
+        newY = Math.floor(Math.random() * 120) + 100;
     }
     c.direction = (newX < c.x) ? 1 : -1;
     c.x = newX;
@@ -326,8 +359,17 @@ function checkChat() {
     updatePosition(c2, true);
 
     const pair = chatPhrases[Math.floor(Math.random() * chatPhrases.length)];
+    
+    // 🔊 おしゃべり開始時に音を鳴らす
+    playSE(sound_chat.mp3);
     showBubble(c1, pair[0]);
-    setTimeout(() => showBubble(c2, pair[1]), 700);
+    
+    setTimeout(() => {
+        // 2人目が返すときにもう一度鳴らす
+        playSE(chatSound);
+        showBubble(c2, pair[1]);
+    }, 700);
+    
     setTimeout(() => {
         c1.bubble.style.display = c2.bubble.style.display = 'none';
         c1.isReacting = c2.isReacting = false;
@@ -394,6 +436,8 @@ function makeDraggable(chara) {
             }
         }, 600);
 
+        // 🔊 引きずるとき（掴んだ瞬間）に音を鳴らす
+        playSE(sound_drag.mp3);
         chara.element.style.backgroundImage = `url('${chara.imgKyaa}')`;
         updatePosition(chara, false);
     }
@@ -432,6 +476,9 @@ function makeDraggable(chara) {
                     'left 1.5s ease-in-out, bottom 1.5s ease-in-out, transform 0.3s ease';
             });
 
+            // 🔊 着地した瞬間に音を鳴らす
+            playSE(sound_drop.mp3);
+
             chara.element.style.backgroundImage = `url('${chara.imgNormal}')`;
             chara.isReacting = false;
             showBubble(chara, '💦');
@@ -451,6 +498,7 @@ function makeDraggable(chara) {
     chara.element.addEventListener('mousedown', e => {
         if (e.button !== 0) return;
         e.preventDefault();
+        tryPlayBGM(); // ここでもBGM開始チェック
         onDragStart(e.clientX, e.clientY);
     });
     document.addEventListener('mousemove', e => { if (dragging) onDragMove(e.clientX, e.clientY); });
@@ -459,6 +507,7 @@ function makeDraggable(chara) {
     // スマホ
     chara.element.addEventListener('touchstart', e => {
         e.preventDefault();
+        tryPlayBGM(); // ここでもBGM開始チェック
         onDragStart(e.touches[0].clientX, e.touches[0].clientY);
     }, { passive: false });
     document.addEventListener('touchmove', e => {
@@ -489,7 +538,7 @@ function doPyon(c, onFinish) {
     });
 }
 
-// ── タップ演出 ───────────────────────────────────────────
+// ── タップ演出（撫でたとき） ──────────────────────────────────
 function tapChara(c) {
     if (c.isSleeping && currentTimeOfDay === 3) {
         c.isSleeping = false;
@@ -501,6 +550,10 @@ function tapChara(c) {
     }
     if (c.isReacting || c.isSleeping || c.isDragging) return;
     c.isReacting = true;
+    
+    // 🔊 撫でた（タップした）ときに音を鳴らす
+    playSE(nade.mp3);
+
     spawnHeart(c);
     c.element.style.backgroundImage = `url('${c.imgEat}')`;
     showBubble(c, '💖');
@@ -513,7 +566,7 @@ function tapChara(c) {
     });
 }
 
-// ── ごはんシステム ───────────────────────────────────────
+// ── ごはんシステム（食べるとき） ─────────────────────────────────
 function toggleMenu() {
     menuPopup.style.display = (menuPopup.style.display === 'flex') ? 'none' : 'flex';
 }
@@ -553,6 +606,9 @@ function giveFood(imgFile) {
     });
 
     setTimeout(() => {
+        // 🔊 キャラクターがもぐもぐし始める瞬間に音を鳴らす
+        playSE(eatSound);
+
         charas.forEach(c => {
             c.element.style.backgroundImage = `url('${c.imgEat}')`;
         });
@@ -581,21 +637,10 @@ function startNightMode() {
     });
 }
 
-function endNightMode() {
-    charas.forEach(c => {
-        if (c.isSleeping) {
-            c.isSleeping = false;
-            c.element.style.backgroundImage = `url('${c.imgNormal}')`;
-            c.element.classList.remove('sleep');
-            c.bubble.style.display = 'none';
-            scheduleWalk(c);
-        }
-    });
-}
-
-// ── 床タップで集まる ────────────────────────────────────
+// 床タップで集まるイベント
 stage.addEventListener('click', e => {
     if (e.target !== stage) return;
+    tryPlayBGM(); // ここでもBGM開始チェック
 
     const stageRect = stage.getBoundingClientRect();
     const tapX = e.clientX - stageRect.left;
@@ -614,11 +659,13 @@ stage.addEventListener('click', e => {
         c.isReacting = true;
         const offset = (i - 1.5) * 40;
         c.x = Math.max(10, Math.min(tapX + offset, 245));
-        c.y = c.id === 3 ? Math.max(100, Math.min(tapY, 220)) : destY; // 死神さんだけタップ位置高めに対応
+        c.y = c.id === 3 ? Math.max(100, Math.min(tapY, 220)) : destY;
         c.direction = (tapX + offset < c.x) ? 1 : -1;
         updatePosition(c, true);
 
         setTimeout(() => {
+            // 🔊 集まってエフェクトを出す瞬間にもおしゃべり音を流用
+            playSE(sound_chat.mp3);
             showBubble(c, ['🌟','💫','✨','🎵'][i]);
             c.isReacting = false;
             setTimeout(() => {
@@ -628,6 +675,18 @@ stage.addEventListener('click', e => {
         }, 1600);
     });
 });
+
+function endNightMode() {
+    charas.forEach(c => {
+        if (c.isSleeping) {
+            c.isSleeping = false;
+            c.element.style.backgroundImage = `url('${c.imgNormal}')`;
+            c.element.classList.remove('sleep');
+            c.bubble.style.display = 'none';
+            scheduleWalk(c);
+        }
+    });
+}
 </script>
 </body>
 </html>
