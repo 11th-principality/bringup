@@ -189,7 +189,6 @@ const stage    = document.getElementById('stage');
 const snackEl  = document.getElementById('snack');
 const menuPopup= document.getElementById('menuPopup');
 
-// 🛠️ HTMLの新しいIDと完全に一致させました
 const bgm       = document.getElementById('bgm');
 const eatSound  = document.getElementById('eatSound');
 const petSound  = document.getElementById('petSound');
@@ -197,10 +196,9 @@ const dragSound = document.getElementById('dragSound');
 const dropSound = document.getElementById('dropSound');
 const chatSound = document.getElementById('chatSound');
 
-// すべてのSEを配列にまとめてスマホ対策しやすくします
 const allSEs = [eatSound, petSound, dragSound, dropSound, chatSound];
 
-// 💡 スマホの「自動再生制限」を完全に解除するシステム
+// 💡 修正点：イベントを横取りしない「安全な」オーディオ解放処理
 let audioUnlocked = false;
 function unlockAudio() {
     if (audioUnlocked) return;
@@ -208,27 +206,21 @@ function unlockAudio() {
     // BGMの再生
     bgm.play().catch(e => console.log("BGM再生待ち:", e));
     
-    // 📢 超重要：スマホは一度「無音」でもいいからユーザーのタップで再生を走らせないと、
-    // 後からJavaScriptで自由に音を鳴らすことができません（すべてのSEのロックを解除）
+    // すべてのSEを無音で一瞬だけ再生してロック解除
     allSEs.forEach(audio => {
         audio.play().then(() => {
-            audio.pause(); // 鳴った瞬間に一時停止
-            audio.currentTime = 0; // 頭出しに戻す
+            audio.pause();
+            audio.currentTime = 0;
         }).catch(e => console.log("SEロック解除待ち:", e));
     });
 
     audioUnlocked = true;
-    // 解除されたらイベントリスナーを外して負荷を減らす
-    document.removeEventListener('click', unlockAudio);
-    document.removeEventListener('touchstart', unlockAudio);
 }
-// 画面のどこかを最初に触った瞬間に発動
-document.addEventListener('click', unlockAudio);
-document.addEventListener('touchstart', unlockAudio);
 
-// 効果音再生用のヘルパー（連続で叩かれても音が重なるようにリセットをかける）
+// 効果音再生用のヘルパー
 function playSE(audioEl) {
     if (!audioEl) return;
+    unlockAudio(); // 音を鳴らす直前にも念のためロック解除を走らせる
     audioEl.currentTime = 0;
     audioEl.play().catch(e => console.log("SE再生エラー:", e));
 }
@@ -377,12 +369,10 @@ function checkChat() {
 
     const pair = chatPhrases[Math.floor(Math.random() * chatPhrases.length)];
     
-    // 🔊 おしゃべり開始
     playSE(chatSound);
     showBubble(c1, pair[0]);
     
     setTimeout(() => {
-        // 2人目が返すとき
         playSE(chatSound);
         showBubble(c2, pair[1]);
     }, 700);
@@ -418,7 +408,7 @@ function sleepChara(c) {
     });
 }
 
-// ── ドラッグシステム ─────────────────────────────────────
+// ── ドラッグ・タップシステム ─────────────────────────────────────
 function makeDraggable(chara) {
     let dragging = false;
     let startClientX, startClientY, startCharaX, startCharaY;
@@ -426,6 +416,8 @@ function makeDraggable(chara) {
     let longPressTimer = null;
 
     function onDragStart(clientX, clientY) {
+        unlockAudio(); // 💡 触った瞬間に音のロックを解除する
+        
         if (chara.isSleeping && currentTimeOfDay === 3) {
             tapChara(chara);
             return;
@@ -453,7 +445,6 @@ function makeDraggable(chara) {
             }
         }, 600);
 
-        // 🔊 引きずるとき（修正済変数名）
         playSE(dragSound);
         chara.element.style.backgroundImage = `url('${chara.imgKyaa}')`;
         updatePosition(chara, false);
@@ -493,7 +484,6 @@ function makeDraggable(chara) {
                     'left 1.5s ease-in-out, bottom 1.5s ease-in-out, transform 0.3s ease';
             });
 
-            // 🔊 着地したとき（修正済変数名）
             playSE(dropSound);
 
             chara.element.style.backgroundImage = `url('${chara.imgNormal}')`;
@@ -503,6 +493,7 @@ function makeDraggable(chara) {
             scheduleWalk(chara);
 
         } else {
+            // 💡 移動がなかった場合は純粋なタップとして処理
             chara.isDragging = false;
             chara.isReacting = false;
             chara.element.style.backgroundImage = `url('${chara.imgNormal}')`;
@@ -511,7 +502,7 @@ function makeDraggable(chara) {
         }
     }
 
-    // PC
+    // PC用イベント
     chara.element.addEventListener('mousedown', e => {
         if (e.button !== 0) return;
         e.preventDefault();
@@ -520,7 +511,7 @@ function makeDraggable(chara) {
     document.addEventListener('mousemove', e => { if (dragging) onDragMove(e.clientX, e.clientY); });
     document.addEventListener('mouseup',   () => { if (dragging) onDragEnd(); });
 
-    // スマホ
+    // スマホ用イベント
     chara.element.addEventListener('touchstart', e => {
         e.preventDefault();
         onDragStart(e.touches[0].clientX, e.touches[0].clientY);
@@ -566,7 +557,7 @@ function tapChara(c) {
     if (c.isReacting || c.isSleeping || c.isDragging) return;
     c.isReacting = true;
     
-    // 🔊 撫でたとき
+    // 🔊 撫でたときの音
     playSE(petSound);
 
     spawnHeart(c);
@@ -621,7 +612,6 @@ function giveFood(imgFile) {
     });
 
     setTimeout(() => {
-        // 🔊 もぐもぐ
         playSE(eatSound);
 
         charas.forEach(c => {
