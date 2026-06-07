@@ -38,7 +38,6 @@
             cursor: grab;
             user-select: none;
             z-index: 10;
-            /* transitionはJSで都度セット */
         }
         .character:active { cursor: grabbing; }
 
@@ -80,7 +79,6 @@
             display: block; width: 0;
         }
 
-        /* ぴょこんジャンプ：transformを上書きしないようbottomで動かす */
         @keyframes pyon {
             0%   { bottom: var(--pyon-base); }
             35%  { bottom: calc(var(--pyon-base) + 22px); }
@@ -155,20 +153,20 @@
     <div id="chara4" class="character"></div>
 
     <div id="snack" class="snack"></div>
-<audio id="umi.mp3" loop>
-    <source src="bgm_cute_ocean.mp3" type="audio/mpeg">
-</audio>
-<audio id="eatSound">
-    <source src="munch_munch.mp3" type="audio/mpeg">
-</audio>
-<audio id="petSound">
-    <source src="pet_nya.mp3" type="audio/mpeg">
-</audio>
-<audio id="kyaaSound">
-    <source src="kyaa_cute.mp3" type="audio/mpeg">
-</audio>
 
-<script>
+    <audio id="umi.mp3" loop>
+        <source src="bgm_cute_ocean.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="eatSound">
+        <source src="munch_munch.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="petSound">
+        <source src="pet_nya.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="kyaaSound">
+        <source src="kyaa_cute.mp3" type="audio/mpeg">
+    </audio>
+
     <div class="controls">
         <div id="menuPopup" class="menu-popup">
             <button onclick="giveFood('snack.png')">🍩 ドーナツ</button>
@@ -213,22 +211,21 @@ function updateBackground() {
     }
 }
 setInterval(updateBackground, 30000);
-// ※ updateBackground()の初回呼び出しはキャラ初期化の後に移動
 
 // ── キャラクター定義 ─────────────────────────────────────
 const charas = [
     { id:1, element:document.getElementById('chara1'), bubble:document.getElementById('bubble1'),
-      imgNormal:'chara_normal.png',  imgEat:'chara_eat.png',        imgSleep:'chara1_sleep.png', imgKyaa:'chara1_kyaa.png',
-      x:40,  y:60,  direction:1, isReacting:false, isSleeping:false, isDragging:false, petCount:0, walkTimer:null },
+      imgNormal:'chara_normal.png',  imgEat:'chara_eat.png',      imgSleep:'chara1_sleep.png', imgKyaa:'chara1_kyaa.png',
+      x:40,  y:60,  direction:1, isReacting:false, isSleeping:false, isDragging:false, petCount:0, walkTimer:null, maxY:150 },
     { id:2, element:document.getElementById('chara2'), bubble:document.getElementById('bubble2'),
       imgNormal:'chara_island.png',  imgEat:'chara_island_eat.png', imgSleep:'chara2_sleep.png', imgKyaa:'chara2_kyaa.png',
-      x:120, y:110, direction:1, isReacting:false, isSleeping:false, isDragging:false, petCount:0, walkTimer:null },
+      x:120, y:110, direction:1, isReacting:false, isSleeping:false, isDragging:false, petCount:0, walkTimer:null, maxY:150 },
     { id:3, element:document.getElementById('chara3'), bubble:document.getElementById('bubble3'),
       imgNormal:'chara_death.png',   imgEat:'chara_death_eat.png',  imgSleep:'chara3_sleep.png', imgKyaa:'chara3_kyaa.png',
-      x:200, y:70,  direction:1, isReacting:false, isSleeping:false, isDragging:false, petCount:0, walkTimer:null },
+      x:200, y:70,  direction:1, isReacting:false, isSleeping:false, isDragging:false, petCount:0, walkTimer:null, maxY:220 }, // ✨死神さんは高め
     { id:4, element:document.getElementById('chara4'), bubble:document.getElementById('bubble4'),
       imgNormal:'chara_priest.png',  imgEat:'chara_priest_eat.png', imgSleep:'chara4_sleep.png', imgKyaa:'chara4_kyaa.png',
-      x:260, y:120, direction:1, isReacting:false, isSleeping:false, isDragging:false, petCount:0, walkTimer:null }
+      x:260, y:120, direction:1, isReacting:false, isSleeping:false, isDragging:false, petCount:0, walkTimer:null, maxY:150 }
 ];
 
 const chatPhrases = [
@@ -236,7 +233,6 @@ const chatPhrases = [
 ];
 
 // ── 位置・スケール更新 ───────────────────────────────────
-// animate: true=transition有効（歩行移動）, false=即座（ドラッグ中）
 function updatePosition(c, animate) {
     c.element.style.transition = animate
         ? 'left 1.5s ease-in-out, bottom 1.5s ease-in-out, transform 0.3s ease'
@@ -248,12 +244,10 @@ function updatePosition(c, animate) {
     c.element.style.left   = c.x + 'px';
     c.element.style.bottom = c.y + 'px';
 
-    // ドラッグ中はスケール1固定、それ以外は遠近感
     const scaleFactor = c.isDragging
         ? 1.0
         : 1 - Math.max(0, Math.min(c.y - 40, 110)) / 110 * 0.35;
 
-    // ★ scaleXだけ方向を掛ける。transformはscaleのみ（bottomで高さ管理するためtranslateYを使わない）
     c.element.style.transform = `scaleX(${c.direction * scaleFactor}) scaleY(${scaleFactor})`;
     c.element.style.zIndex    = c.isDragging ? 100 : Math.max(1, 20 - Math.floor(c.y / 10));
 
@@ -269,7 +263,6 @@ function showBubble(c, text) {
 // ── 歩行システム ──────────────────────────────────────────
 function scheduleWalk(c) {
     if (c.walkTimer) return;
-    // 夜はゆっくり（4000〜7000ms）、それ以外は通常（1200〜3000ms）
     const delay = (currentTimeOfDay === 3)
         ? Math.floor(Math.random() * 3000) + 4000
         : Math.floor(Math.random() * 1800) + 1200;
@@ -285,12 +278,10 @@ function doWalk(c) {
         return;
     }
     const newX = Math.floor(Math.random() * 215) + 15;
-    const top = c.maxY ?? 150;
-           // 💡 死神さん（id: 3）だけ普段の移動範囲を高くする魔法
-        let newY = Math.floor(Math.random() * 110) + 40; // 通常の範囲 (40〜150)
-        if (c.id === 3) {
-            newY = Math.floor(Math.random() * 300) + 120; // ✨ 死神さん専用：高めの範囲 (100〜220)
-        }
+    let newY = Math.floor(Math.random() * 110) + 40; 
+    if (c.id === 3) {
+        newY = Math.floor(Math.random() * 120) + 100; // ✨ 死神さん専用移動範囲 (100〜220)
+    }
     c.direction = (newX < c.x) ? 1 : -1;
     c.x = newX;
     c.y = newY;
@@ -298,7 +289,6 @@ function doWalk(c) {
     if (Math.random() < 0.15) checkChat();
 
     if (currentTimeOfDay === 3) {
-        // 夜は1回歩いたらまた寝る
         c.walkTimer = setTimeout(() => {
             c.walkTimer = null;
             if (!c.isReacting && !c.isDragging && currentTimeOfDay === 3) {
@@ -319,7 +309,7 @@ charas.forEach(c => {
     makeDraggable(c);
     scheduleWalk(c);
 });
-updateBackground(); // キャラ定義の後に時間帯チェック（夜モード対応）
+updateBackground();
 
 // ── おしゃべりシステム ───────────────────────────────────
 function checkChat() {
@@ -346,7 +336,7 @@ function checkChat() {
     }, 2600);
 }
 
-// ── ねんね処理（長押しから呼ばれる） ────────────────────────
+// ── ねんね処理 ──────────────────────────────────────────
 function sleepChara(c) {
     if (c.isReacting || c.isSleeping || c.isDragging) return;
     c.isReacting = true;
@@ -374,10 +364,9 @@ function makeDraggable(chara) {
     let dragging = false;
     let startClientX, startClientY, startCharaX, startCharaY;
     let dragMoved = false;
-    let longPressTimer = null;  // 長押し判定タイマー
+    let longPressTimer = null;
 
     function onDragStart(clientX, clientY) {
-        // 夜に寝ている子はタップで起こす（ドラッグはしない）
         if (chara.isSleeping && currentTimeOfDay === 3) {
             tapChara(chara);
             return;
@@ -395,7 +384,6 @@ function makeDraggable(chara) {
         startCharaX  = chara.x;
         startCharaY  = chara.y;
 
-        // 600ms後にまだ動いていなければねんね
         longPressTimer = setTimeout(() => {
             if (!dragMoved) {
                 dragging = false;
@@ -415,7 +403,6 @@ function makeDraggable(chara) {
         const dx = clientX - startClientX;
         const dy = clientY - startClientY;
 
-        // 5px以上動いたらドラッグとみなす＋長押しタイマーを止める
         if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
             dragMoved = true;
             clearTimeout(longPressTimer);
@@ -427,26 +414,19 @@ function makeDraggable(chara) {
     }
 
     function onDragEnd() {
-        clearTimeout(longPressTimer);  // 長押しタイマーをキャンセル
+        clearTimeout(longPressTimer);
         if (!dragging) return;
         dragging = false;
 
         if (dragMoved) {
-            // ── ドラッグして離した ──
             chara.isDragging = false;
 
-            // ★ スケール変化を防ぐため：
-            //   1) まずtransition=noneのままy座標を着地範囲にクランプ
-            //   2) 1フレーム後にtransitionを戻す
-            // キャラごとの上限に合わせてクランプ
             const landMax = chara.maxY ?? 150;
             if (chara.y > landMax) chara.y = landMax;
-            if (chara.y < 40)     chara.y = 40;
+            if (chara.y < 40)      chara.y = 40;
 
-            // transition=noneで座標だけ確定させる
             updatePosition(chara, false);
 
-            // 次フレームでtransitionを有効化（座標は動かないのでスケールのみ滑らかに戻る）
             requestAnimationFrame(() => {
                 chara.element.style.transition =
                     'left 1.5s ease-in-out, bottom 1.5s ease-in-out, transform 0.3s ease';
@@ -459,7 +439,6 @@ function makeDraggable(chara) {
             scheduleWalk(chara);
 
         } else {
-            // ── タップ（ほぼ動いていない）──
             chara.isDragging = false;
             chara.isReacting = false;
             chara.element.style.backgroundImage = `url('${chara.imgNormal}')`;
@@ -500,9 +479,7 @@ function spawnHeart(c) {
 }
 
 function doPyon(c, onFinish) {
-    // CSS変数でアニメーション基準bottomを渡す
     c.element.style.setProperty('--pyon-base', c.y + 'px');
-    // transition=noneにしないとbottom transitionとぶつかる
     c.element.style.transition = 'transform 0.3s ease';
     c.element.classList.add('pyon');
     c.element.addEventListener('animationend', function handler() {
@@ -512,9 +489,8 @@ function doPyon(c, onFinish) {
     });
 }
 
-// ── タップ → ぴょこんジャンプのみ ───────────────────────────
+// ── タップ演出 ───────────────────────────────────────────
 function tapChara(c) {
-    // 夜に寝ているときはタップで起こす
     if (c.isSleeping && currentTimeOfDay === 3) {
         c.isSleeping = false;
         c.element.style.backgroundImage = `url('${c.imgNormal}')`;
@@ -546,7 +522,6 @@ function giveFood(imgFile) {
     if (charas.some(c => c.isReacting)) return;
     menuPopup.style.display = 'none';
 
-    // 寝ている子は起こしてから集合
     charas.forEach(c => {
         if (c.isSleeping) {
             c.isSleeping = false;
@@ -593,6 +568,7 @@ function giveFood(imgFile) {
         }, 1500);
     }, 1600);
 }
+
 // ── 夜モード ─────────────────────────────────────────────
 function startNightMode() {
     charas.forEach(c => {
@@ -616,7 +592,8 @@ function endNightMode() {
         }
     });
 }
-    // ── 床タップで集まる ────────────────────────────────────
+
+// ── 床タップで集まる ────────────────────────────────────
 stage.addEventListener('click', e => {
     if (e.target !== stage) return;
 
@@ -637,7 +614,7 @@ stage.addEventListener('click', e => {
         c.isReacting = true;
         const offset = (i - 1.5) * 40;
         c.x = Math.max(10, Math.min(tapX + offset, 245));
-        c.y = destY;
+        c.y = c.id === 3 ? Math.max(100, Math.min(tapY, 220)) : destY; // 死神さんだけタップ位置高めに対応
         c.direction = (tapX + offset < c.x) ? 1 : -1;
         updatePosition(c, true);
 
