@@ -155,7 +155,24 @@
     <div id="chara4" class="character"></div>
 
     <div id="snack" class="snack"></div>
+</div>  <!-- controlsの閉じタグ -->
+</div>     <!-- stage-containerの閉じタグ -->
 
+<!-- ★★★ ここに音タグを追加 ★★★ -->
+<audio id="umi.mp3" loop>
+    <source src="bgm_cute_ocean.mp3" type="audio/mpeg">
+</audio>
+<audio id="eatSound">
+    <source src="munch_munch.mp3" type="audio/mpeg">
+</audio>
+<audio id="petSound">
+    <source src="pet_nya.mp3" type="audio/mpeg">
+</audio>
+<audio id="kyaaSound">
+    <source src="kyaa_cute.mp3" type="audio/mpeg">
+</audio>
+
+<script>
     <div class="controls">
         <div id="menuPopup" class="menu-popup">
             <button onclick="giveFood('snack.png')">🍩 ドーナツ</button>
