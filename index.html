@@ -202,9 +202,9 @@ const allSEs = [eatSound, petSound, dragSound, dropSound, chatSound];
 let audioUnlocked = false;
 function unlockAudio() {
     if (audioUnlocked) return;
-    
-    bgm.play().catch(e => console.log("BGM再生待ち:", e));
-    
+    audioUnlocked = true;
+
+    // SEのロック解除（無音で一瞬再生）
     allSEs.forEach(audio => {
         audio.play().then(() => {
             audio.pause();
@@ -212,7 +212,11 @@ function unlockAudio() {
         }).catch(e => console.log("SEロック解除待ち:", e));
     });
 
-    audioUnlocked = true;
+    // BGMはロック解除後に少し待ってから再生
+    setTimeout(() => {
+        bgm.volume = 0.5;
+        bgm.play().catch(e => console.log("BGM再生エラー:", e));
+    }, 300);
 }
 
 function playSE(audioEl) {
@@ -553,7 +557,7 @@ function tapChara(c) {
     if (c.isReacting || c.isSleeping || c.isDragging) return;
     c.isReacting = true;
     
-    playSE(petSound);
+    playSE(chatSound);
 
     spawnHeart(c);
     c.element.style.backgroundImage = `url('${c.imgEat}')`;
